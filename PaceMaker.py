@@ -28,11 +28,13 @@ class PaceMaker:
         if tmo_info.round < self.current_round:
             return None
         if tmo_info.sender not in self.pending_timeouts[tmo_info.round].senders:
-            self.pending_timeouts[tmo_info.round] = self.pending_timeouts[tmo_info.round] union {tmo_info}
+            # self.pending_timeouts[tmo_info.round] = self.pending_timeouts[tmo_info.round] union {tmo_info}
+            # figure this out
+            pass
         if self.pending_timeouts[tmo_info.round].senders == f + 1:
             stop_timer(self.current_round)
             self.local_timeout_round()
-        if self.pending_timeouts[tmo_info.round].senders == 2f + 1:
+        if self.pending_timeouts[tmo_info.round].senders == 2 * f + 1:
             return TC(tmo_info.round, {t.high_qc.round | t in self.pending_timeouts[tmo_info.round]}, {t.signature | t in self.pending_timeouts[tmo_info.round]})
         return None
 
