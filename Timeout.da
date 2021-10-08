@@ -1,0 +1,6 @@
+class TimeoutInfo:
+    def __init__(self, round, high_qc, sender, signature):
+        self.round = round
+        self.hiqh_qc = high_qc
+        self.sender = sender
+        self.signature = signature

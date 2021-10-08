@@ -1,0 +1,119 @@
+import BlockTree as bt
+import Ledger
+import Timeout
+import hashlib
+from nacl.signing import VerifyKey
+from nacl.signing import SigningKey
+
+# SAFETY: PRIVATE
+
+# these get assigned during process setup
+_private_key = None
+_public_keys = None
+_validator_id = None
+
+highest_vote_round = 0  # initially 0
+highest_qc_round = None
+
+
+# set process private key (called during setup)
+def set_private_key(key):
+    global _private_key
+    _private_key = key
+
+
+# set process public keys (caled during setup)
+def set_public_keys(keys):
+    global _public_keys
+    _public_keys = keys
+
+
+# set process validator_id (called during setup)
+def set_validator_id(id):
+    global _validator_id
+    _validator_id = id
+
+
+def _increase_highest_vote_round(round):
+    # commit not to vote in rounds lower than round
+    global highest_vote_round
+    highest_vote_round = max(round, highest_vote_round)
+
+
+def _update_highest_qc_round(qc_round):
+    global highest_qc_round
+    highest_qc_round = max(qc_round, highest_qc_round)
+
+
+def _consecutive(block_round, round):
+    return round + 1 == block_round
+
+
+def _safe_to_extend(block_round, qc_round, tc):
+    return _consecutive(block_round, tc.round) and (qc_round >= max(tc.tmo_high_qc_rounds))
+
+
+def _safe_to_vote(block_round, qc_round, tc):
+    global highest_vote_round
+    if block_round <= max(highest_vote_round, qc_round):
+        # 1. must vote in monotonically increasing rounds
+        # 2. must extend a smaller round
+        return False
+    return _consecutive(block_round, qc_round) or _safe_to_extend(block_round, qc_round, tc)
+
+
+def _safe_to_timeout(round, qc_round, tc):
+    global highest_qc_round, highest_vote_round
+    if (qc_round < highest_qc_round) or (round <= max(highest_vote_round-1, qc_round)):
+        # respect highest_qc_round and don't timeout in a past round
+        return False
+    return _consecutive(round, qc_round) or _consecutive(round, tc.round)
+
+
+def _commit_state_id_candidate(block_round, qc):
+    # find the commited id in case a qc is formed in the vote round
+    if _consecutive(block_round, qc.vote_info.round):
+        return Ledger.pending_state(qc.id)
+    else:
+        return None
+
+
+# SAFETY: PUBLIC
+
+def make_vote(b, last_tc):
+    # b is the block to vote on
+    # last_tc is the timeout certificate for the previous round, else ⊥
+
+    qc_round = b.qc.vote_info.round
+    if valid_signatures(b, last_tc) and _safe_to_vote(b.round, qc_round, last_tc):
+        _update_highest_qc_round(b.round)
+        _increase_highest_vote_round(b.round)
+
+        vote_info = bt.VoteInfo(id=b.id, round=b.round, parent_id=b.qc_vote_info.id, parent_round=qc_round,
+                                exec_state_id=Ledger.pending_state(b.id))
+
+        m = hashlib.sha256()
+        m.update(b.id + b.round + b.qc_vote_info.id +
+                 qc_round + Ledger.pending_state(b.id))
+        vote_info_hash = m.digest()
+        ledger_commit_info = bt.LedgerCommitInfo(commit_state_id=_commit_state_id_candidate(
+            b.round, b.qc), vote_info_hash=vote_info_hash)
+
+        return bt.VoteMsg(vote_info, ledger_commit_info, bt.high_commit_qc)
+    else:
+        return None
+
+
+def make_timeout(round, high_qc, last_tc):
+    # Make a TimeoutInfo after a local timeout
+
+    global _validator_id, _private_key
+    qc_round = high_qc.vote_info.round
+    if valid_signatures(high_qc, last_tc) and _safe_to_timeout(round, qc_round, last_tc):
+        _increase_highest_vote_round(round)  # stop voting for round
+        if _private_key == None:  # make sure you have a private key to perform signature
+            output("No private key given.")
+            return
+        else:
+            signature = _private_key.sign((round, high_qc.round))
+        return Timeout.TimeoutInfo(round, high_qc, _validator_id, signature)
