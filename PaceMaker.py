@@ -1,4 +1,6 @@
-class Pacemaker:
+class PaceMaker:
+    current_round = None
+
     def __init__(self):
         self.current_round = 0
         self.last_round = None
@@ -38,13 +40,15 @@ class Pacemaker:
         pass
 
 
-def advance_round_tc(self, tc):
+    def advance_round_tc(self, tc):
        if tc is None or tc.round < self.current_round:
            return False
        last_round_tc = tc
        self.start_timer(tc.round + 1)
        return True
 
+    def save_consensus_state(self):
+        pass
 
     def advance_round_qc(self, qc):
         if qc.vote_info.round < self.current_round:
