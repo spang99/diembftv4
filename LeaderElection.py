@@ -13,7 +13,7 @@ class LeaderElection:
         last_authors = {}
         current_qc = qc
         i = 0
-        for i = 0; i < window size ∨ |last authors| < exclude size; i ← i + 1:
+        while (i < self.window_size) or len(last_authors) < self.exclude_size:
             current_block = Ledger.committed_block(current_qc.vote_infor.parent_id)
             block_author = current_block.author
             if i < self.window_size:
@@ -21,7 +21,8 @@ class LeaderElection:
             if len(last_authors) < self.exclude_size:
                 last_authors.add(block_author)
             current_qc = current_block.qc
-        active_validators = active_validators\last_authors
+            active_validators = active_validators\last_authors
+            i = i + 1
         return active_validators.pick_one(seed = qc.vote_info.round)
 
     def update_leaders(self, qc):
