@@ -175,7 +175,7 @@ def make_timeout(round, high_qc, last_tc):
         _increase_highest_vote_round(round)  # stop voting for round
         if _private_key == None:  # make sure you have a private key to perform signature
             print("No private key given.")
-            return
+            return None
         else:
             signature = _private_key.sign((round, high_qc.round))
         return TimeoutInfo(round, high_qc, _validator_id, signature)
