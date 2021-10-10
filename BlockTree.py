@@ -3,12 +3,25 @@ from Ledger import *
 
 class Block:
 	def __init__(self, author, round, payload, qc, id):
-		self.auhor = author
+		self.author = author
 		self.round  = round
 		self.payload = payload
 		self.qc = qc
 		self.id = id
 		printf('Created new Block class')
+
+class PendingBlockTree:
+        def __init__():
+                self.root = None
+                self.blocks = {} #maps a block_id to a block
+                printf('Created new PendingBlockTree class object')
+        def add(b):
+                printf('Adding new block to PendingBlockTree class')
+                self.blocks[b.id] = b
+        def prune(root):
+                printf('Pruning PendingBlockTree class')
+                self.root = root
+                self.blocks.clear()
 
 class LedgerCommitInfo:
 	def __init__(self, commit_state_id, vote_info_hash):
@@ -68,12 +81,12 @@ class VoteMsg:
 		printf('Created new VoteMsg class')
 
 class BlockTree:
-	high_commit_qc = None
-	high_qc = None
-	pending_block_tree = [] # Can be declared a dictionary also
-	pending_votes = {} # Declaring as dictionary for quick search
-	vote_idx = 0
-	f = 0 # Initialize f (no. of faulty nodes) before starting program
+        high_commit_qc = None
+        high_qc = None
+        pending_block_tree = PendingBlockTree() # Can be declared a dictionary also
+        pending_votes = {} # Declaring as dictionary for quick search
+        vote_idx = None
+        f = None
 	def process_qc(qc):
 		print('In function: process_qc')
 		if qc.ledger_commit_info.commit_state_id == None:
