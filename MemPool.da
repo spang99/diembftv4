@@ -1,0 +1,43 @@
+import queue
+from collections import deque
+
+
+class Request:
+    def __init__(self, id, cmd):
+        self.id = id
+        # It is assumed that commands are of the form str(c)+"-"+str(i), where i refers
+        # to the ith command from client c.
+        self.cmd = cmd
+
+
+# pool of submitted but not yet executed requests
+_request_pool = queue.Queue()
+
+
+# cache of 20 most recently executed requests
+_cached_requests = deque(['']*20, maxlen=20)
+
+
+def get_transactions():
+    # called get_transactions to follow psuedocode, but really get_requests
+    # if no pending requests, returns None.
+    try:
+        req = _request_pool.get_nowait()
+        return req
+    except queue.Empty:
+        return None
+
+
+def submit_request(request):
+    # first check if this is a retransmitted request
+    for cached_request_id, cached_result in _cached_requests:
+        if cached_request_id == request.id:
+            # resend cached_result to client
+            return
+    # add request to _request_pool
+    _request_pool.put(request)
+
+
+def cache_request(request, result):
+    # put an executed request in the cache
+    _cached_requests.appendleft((request.id, result))
