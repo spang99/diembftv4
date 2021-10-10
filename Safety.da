@@ -1,6 +1,6 @@
-from BlockTree import *
+from BlockTree import (BlockTree, VoteInfo, VoteMsg,
+                       TimeoutInfo, LedgerCommitInfo)
 import Ledger
-import Pacemaker
 import nacl.hash
 from nacl.signing import VerifyKey
 from nacl.signing import SigningKey
@@ -161,7 +161,7 @@ def make_vote(b, last_tc):
         ledger_commit_info = LedgerCommitInfo(commit_state_id=_commit_state_id_candidate(
             b.round, b.qc), vote_info_hash=vote_info_hash)
 
-        return VoteMsg(vote_info, ledger_commit_info, Blocktree.high_commit_qc)
+        return VoteMsg(vote_info, ledger_commit_info, BlockTree.high_commit_qc)
     else:
         return None
 
@@ -174,8 +174,8 @@ def make_timeout(round, high_qc, last_tc):
     if _valid_signatures(high_qc, last_tc) and _safe_to_timeout(round, qc_round, last_tc):
         _increase_highest_vote_round(round)  # stop voting for round
         if _private_key == None:  # make sure you have a private key to perform signature
-            output("No private key given.")
-            return
+            print("No private key given.")
+            return None
         else:
             signature = _private_key.sign((round, high_qc.round))
         return TimeoutInfo(round, high_qc, _validator_id, signature)
