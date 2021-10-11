@@ -1,0 +1,67 @@
+from nacl.signing import VerifyKey
+from nacl.signing import SigningKey
+from time import sleep
+from datetime import datetime
+
+
+class Request:
+    def __init__(self, id, cmd, client, signature):
+        self.id = id  # request id for deduplication and caching of results
+        # It is assumed that commands are of the form str(c)+"-"+str(i), where i refers
+        # to the ith command from client c.
+        self.cmd = cmd
+        self.client = client  # the actual process of the client. Used to send the reply
+        self.signature = signature  # signature(id)
+
+
+class Workload:
+    def __init__(self, numrequests, delay, retransmit):
+        self.numrequests = numrequests
+        self.delay = delay
+        self.retransmit = retransmit
+
+
+class Client(process):
+    def setup(config):
+        # setup the client
+        # config is a dictionary with config information
+        self.work_load = config["workload"]
+        self.validators = config["validators"]
+        self.private_key = config['private_key']
+        self.replies = {}
+        self.f = config['f']  # faulty validators
+        self.timeout = config['timeout']  # wait for 2f+1 replies
+
+    def receive(msg=('reply', reqid, result), from_=p):
+        output(f"Received reply from {p} for RequestID: ...{reqid[-5:]}")
+        if reqid in replies:
+            replies[reqid].append(result)
+        else:
+            replies[reqid] = [result]
+
+    def run():
+        for i in range(1, work_load.numrequests+1):
+            sleep(work_load.delay)
+            # send the request
+            client = self
+            cmd = str(self) + " --- " + str(i)
+            reqid = nacl.hash.sha256(cmd.encode())
+            reqid_str = reqid.decode()
+            signature = private_key.sign(reqid)
+            req = Request(reqid_str, cmd, client, signature)
+            send(('request', req), to=validators)
+            replies[reqid_str] = []
+            -- reply
+            # limitation: doesn't make sure replies are from unique validators
+            if await(len(replies[reqid_str]) == 2*f+1):
+                output(f"{cmd} was committed, result:{replies[reqid_str][0]}")
+                continue
+            elif timeout(timeout):
+                # retransmit request
+                output("retransmitting due to timeout")
+
+        output("Finished workload and exiting")
+        # in main, you can use await(each(c in clients, has=received(('finished_workload',), from_=c)))
+        # in order to determine when all clients have finished their workloads and you can tell
+        # validators to exit
+        send(('finished_workload',), to=nodeof(self))
