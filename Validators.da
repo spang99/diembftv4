@@ -9,19 +9,13 @@ from Safety import *
 
 config(channel='fifo', clock='Lamport')
 
-<<<<<<< HEAD:Validators.da
-class Validator(process):
-    def setup(validators:set, exit_cnt:int): pass
 
-    #sends a message to another validator
+class Validator(process):
+    def setup(validators: set, exit_cnt: int): pass
+
+    # sends a message to another validator
     def send_message(msg_type, msg_object, recipient):
         send((msg_type, msg_object, self), to=recipient)
-=======
-
-class Run(process):
-    def setup(validators: set):
-        pass
->>>>>>> 2f5f926e5e15b275ff01c09930fa30b641bc0f96:Run.da
 
     def process_certificate_qc(qc):
         output('In function: process_certificate_qc')
@@ -41,7 +35,8 @@ class Run(process):
         BlockTree.execute_and_insert(block)
         vote_msg = Safety.make_vote(block, last_round_tc)
         if vote_msg is None:
-            send(("VoteMsg", vote_msg, self), to=LeaderElection.get_leader(rnd + 1))
+            send(("VoteMsg", vote_msg, self),
+                 to=LeaderElection.get_leader(rnd + 1))
 
     def process_timeout_msg(M):
         output('In function: process_timeout_msg')
@@ -63,11 +58,12 @@ class Run(process):
     def process_new_round_event(last_tc):
         output('In function: process_new_round_event')
         if u is LeaderElection.get_leader(Pacemaker.current_round):
-            b = BlockTree.generate_block(MemPool.get_transactions(), Pacemaker.current_round)
+            b = BlockTree.generate_block(
+                MemPool.get_transactions(), Pacemaker.current_round)
             if (b.payload == "Exit"):
                 exit_cnt += 1
             if exit_cnt is 3:
-		sys.exit("No more requests from client")
+                sys.exit("No more requests from client")
             P = BlockTree.ProposalMsg(b, last_tc, BlockTree.high_commit_qc)
             send(("ProposalMsg", P, self), to=validators)
 
@@ -83,8 +79,12 @@ class Run(process):
     def receive(msg=("LocalTimeout", M, sender)):
         Pacemaker.local_timeout_round()
 
+    def receive(msg=('Request', req), from_=sender):
+        output("Received request from client.")
+        add_request(req)
+
     def run():
         op = 'Starting Node ' + Safety.validator_id
         output(op)
-        while exit_cnt<3:
+        while exit_cnt < 3:
             continue

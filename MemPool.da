@@ -1,6 +1,7 @@
 import queue
 from Client import Request
 from collections import deque
+from Validators import send_message
 
 # pool of submitted but not yet executed requests/transactions
 _request_pool = queue.Queue()
@@ -24,7 +25,7 @@ def add_request(req):
     for cached_request_id, cached_result in _cached_results:
         if cached_request_id == request.id:
             output("Sending a cached response.")
-            send(msg=('reply', req.id, cached_result), to=req.client)
+            send_message('reply', (req.id, cached_result), req.client)
             return
     # add request to _request_pool
     _request_pool.put(req)
