@@ -149,6 +149,7 @@ class BlockTree:
         print('In function: process_vote')
         process_qc(v.high_commit_qc)
         if verify_signature(v) is True:  # implement code for signature verification
+            vote_idx = nacl.hash.sha256(v.ledger_commit_info)
             self.pending_votes[vote_idx].append([v.sender, v.signature])
             if len(BlockTree.pending_votes[vote_idx]) == 2 * f + 1:
                 qc = QC(v.vote_info, v.ledger_commit_info, BlockTree.pending_votes[vote_idx], \

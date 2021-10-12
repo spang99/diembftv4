@@ -14,8 +14,8 @@ class Validator(process):
     def setup(validators:set, exit_cnt:int): pass
 
     #sends a message to another validator
-    def send_message(msg_type, msg_object):
-        send((msg_type, msg_object, self))
+    def send_message(msg_type, msg_object, recipient):
+        send((msg_type, msg_object, self), to=recipient)
 =======
 
 class Run(process):
