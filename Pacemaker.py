@@ -1,3 +1,4 @@
+import time
 from BlockTree import *
 from Safety import *
 
@@ -5,6 +6,8 @@ current_round = 0
 last_round = None
 pending_timeouts = []
 delta = None
+time_started = 0
+time_stopped = 0
 
 
 def get_round_timer(r):
@@ -15,11 +18,11 @@ def get_round_timer(r):
 
 def start_timer(new_round):
     print("In function: Pacemaker.start_timer")
-    global current_round
+    global current_round, time_started
     stop_timer()
     current_round = new_round
     # start local timer for round current round for duration get round timer(current round)
-    start_timer(current_round, get_round_timer(current_round))
+    time_started = time.perf_counter()
 
 
 def local_timeout_round():
@@ -45,15 +48,15 @@ def process_remote_timeout(tmo):
         stop_timer()
         self.local_timeout_round()
     if self.pending_timeouts[tmo_info.round].senders == 2 * f + 1:
-        return TC(tmo_info.round, {t.high_qc.round | t in self.pending_timeouts[tmo_info.round]},
-                  {t.signature | t in self.pending_timeouts[tmo_info.round]})
+        return BlockTree.TC(tmo_info.round, {t.high_qc.round | t in self.pending_timeouts[tmo_info.round]},
+                            {t.signature | t in self.pending_timeouts[tmo_info.round]})
     return None
 
 
 def stop_timer():
+    global time_stopped
     print("In function: Pacemaker.stop_timer")
-
-    pass
+    time_stopped = time.perf_counter()
 
 
 def advance_round_tc(tc):
@@ -70,10 +73,14 @@ def save_consensus_state():
     pass
 
 
-def advance_round_qc(self, qc):
+def advance_round_qc(qc):
+    global current_round
     print("In function: Pacemaker.advance_round_qc")
-    if qc.vote_info.round < self.current_round:
+    if qc.vote_info.round < current_round:
         return False
     last_round_qc = None
-    self.start_timer(qc.vote_info.round + 1)
     return True
+
+
+def broadcast(msg):
+    print("In function: Pacemaker.broadcast")
