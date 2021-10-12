@@ -4,7 +4,7 @@ from PaceMaker import *
 validators = Validator.validators
 window_size = f
 exclude_size = f + 1
-reputation_leaders = None
+reputation_leaders = []
 
 
 def elect_reputation_leader(qc):
@@ -26,7 +26,7 @@ def elect_reputation_leader(qc):
             last_authors.add(block_author)
         current_qc = current_block.qc
         # backslash means complement set, make sure both are sets
-        active_validators = active_validators - last_authors
+        active_validators -= last_authors
         i += 1
     return active_validators.pick_one(seed=qc.vote_info.round)
 
