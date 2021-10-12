@@ -1,7 +1,7 @@
 import time
 from BlockTree import *
 from Safety import *
-from Validator import *
+from Validators import *
 
 current_round = 0
 last_round_tc = None
@@ -92,5 +92,5 @@ def advance_round_qc(qc):
 def broadcast(msg):
     print("In function: Pacemaker.broadcast")
     # send a timeoutMsg to all other validators
-    for validator in LeaderElection.validators:
-        send_message((TimeoutMsg, msg), validator)
+    # for validator in LeaderElection.validators:
+    send_message('TimeoutMsg', msg, Validators.validators)

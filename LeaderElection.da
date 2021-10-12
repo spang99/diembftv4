@@ -1,5 +1,7 @@
+import random
 from Ledger import *
 from PaceMaker import *
+from Validators import *
 
 validators = Validator.validators
 window_size = f
@@ -28,7 +30,8 @@ def elect_reputation_leader(qc):
         # backslash means complement set, make sure both are sets
         active_validators -= last_authors
         i += 1
-    return active_validators.pick_one(seed=qc.vote_info.round)
+    random.seed(qc.vote_info.round)
+    return active_validators.random.choice()
 
 
 def update_leaders(qc):
@@ -41,9 +44,9 @@ def update_leaders(qc):
         reputation_leaders[current_round + 1] = elect_reputation_leader(qc)
 
 
-def get_leader(round):
+def get_leader(rnd):
     global validators, reputation_leaders
     print("In function: LeaderElection.get_leader")
-    if (round, leader) in reputation_leaders:
+    if (rnd, leader) in reputation_leaders:
         return leader
-    return validators[(round / 2) % len(validators)]
+    return validators[(rnd / 2) % len(validators)]
