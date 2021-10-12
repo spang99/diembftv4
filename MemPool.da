@@ -23,7 +23,7 @@ def get_transactions():
 def add_request(req):
     # first check if this is a retransmitted request
     for cached_request_id, cached_result in _cached_results:
-        if cached_request_id == request.id:
+        if cached_request_id == req.id:
             output("Sending a cached response.")
             send_message('reply', (req.id, cached_result), req.client)
             return
