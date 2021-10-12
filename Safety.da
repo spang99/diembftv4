@@ -1,10 +1,10 @@
-from BlockTree import (BlockTree, VoteInfo, VoteMsg,
-                       TimeoutInfo, LedgerCommitInfo)
 import Ledger
 import nacl.hash
-from nacl.signing import VerifyKey
-from nacl.signing import SigningKey
+from BlockTree import (BlockTree, VoteInfo, VoteMsg,
+                       TimeoutInfo, LedgerCommitInfo)
 from nacl.exceptions import BadSignatureError
+from nacl.signing import SigningKey
+from nacl.signing import VerifyKey
 
 # SAFETY: PRIVATE
 
@@ -74,7 +74,7 @@ def _safe_to_vote(block_round, qc_round, tc):
 
 def _safe_to_timeout(round, qc_round, tc):
     global highest_qc_round, highest_vote_round
-    if (qc_round < highest_qc_round) or (round <= max(highest_vote_round-1, qc_round)):
+    if (qc_round < highest_qc_round) or (round <= max(highest_vote_round - 1, qc_round)):
         # respect highest_qc_round and don't timeout in a past round
         return False
     return _consecutive(round, qc_round) or _consecutive(round, tc.round)
@@ -106,7 +106,7 @@ def _valid_signatures(qc, last_tc):
     global _f, _validator_id
 
     if last_tc:
-        if len(last_tc.tmo_signatures) < 2*_f + 1:
+        if len(last_tc.tmo_signatures) < 2 * _f + 1:
             print("Discarding message: TC does not have a quorum of signatures.")
             return False
         for sender, signature in last_tc.tmo_signatures:
@@ -126,7 +126,7 @@ def _valid_signatures(qc, last_tc):
         return False
     if not _valid_signature(_public_keys[qc.author], qc.author_signature):
         return False
-    if len(qc.signatures) < 2*_f + 1:
+    if len(qc.signatures) < 2 * _f + 1:
         print("Discarding message: QC does not have a quorum of signatures.")
         return False
     for sender, signature in qc.signatures:
@@ -153,10 +153,11 @@ def make_vote(b, last_tc):
 
         exec_state_id = Ledger.pending_state(b.id)
         vote_info = VoteInfo(id=b.id, round=b.round, parent_id=b.qc_vote_info.id, parent_round=qc_round,
-                                exec_state_id=exec_state_id)
+                             exec_state_id=exec_state_id)
 
-        vote_info_hash = nacl.hash.sha256((str(b.id)+str(b.round)+"-" +
-                                           str(b.qc_vote_info.id)+str(qc_round)+"-"+exec_state_id).encode(), nacl.encoding.HexEncoder)
+        vote_info_hash = nacl.hash.sha256((str(b.id) + str(b.round) + "-" +
+                                           str(b.qc_vote_info.id) + str(qc_round) + "-" + exec_state_id).encode(),
+                                          nacl.encoding.HexEncoder)
 
         ledger_commit_info = LedgerCommitInfo(commit_state_id=_commit_state_id_candidate(
             b.round, b.qc), vote_info_hash=vote_info_hash)

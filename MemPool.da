@@ -1,14 +1,12 @@
-from Client import Request
 import queue
+from Client import Request
 from collections import deque
-
 
 # pool of submitted but not yet executed requests/transactions
 _request_pool = queue.Queue()
 
-
 # cache of 20 most recently executed requests/transactions replies
-_cached_results = deque(['']*20, maxlen=20)
+_cached_results = deque([''] * 20, maxlen=20)
 
 
 def get_transactions():
@@ -42,6 +40,6 @@ def _cache_reply(request, result):
 
 
 def send_reply(req):
-    result = "Your cmd: "+req.cmd+" was committed."
+    result = "Your cmd: " + req.cmd + " was committed."
     send(msg=('reply', req.id, result), to=req.client)
     _cache_reply(req, result)

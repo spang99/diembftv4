@@ -1,15 +1,18 @@
-#change definition of send messages everywhere
-from Safety import *
-from Pacemaker import *
-from BlockTree import *
-from MemPool import *
-from Ledger import *
-from LeaderElection import *
+# change definition of send messages everywhere
 import sys
+from BlockTree import *
+from LeaderElection import *
+from Ledger import *
+from MemPool import *
+from Pacemaker import *
+from Safety import *
+
 config(channel='fifo', clock='Lamport')
 
+
 class Run(process):
-    def setup(validators:set): pass
+    def setup(validators: set):
+        pass
 
     def process_certificate_qc(qc):
         output('In function: process_certificate_qc')
@@ -17,7 +20,7 @@ class Run(process):
         LedgerElection.update_leaders(qc)
         Pacemaker.advance_round(qc.vote_info.rnd)
 
-    def process_proposal_msg(P, sender)
+    def process_proposal_msg(P, sender):
         output('In function: process_proposal_msg')
         process_certificate_qc(P.block.qc)
         process_certificate_qc(P.high_commit_qc)
@@ -29,7 +32,7 @@ class Run(process):
         BlockTree.execute_and_insert(block)
         vote_msg = Safety.make_vote(block, last_round_tc)
         if vote_msg is None:
-            send(("VoteMsg", vote_msg, self), to=LeaderElection.get_leader(rnd+1))
+            send(("VoteMsg", vote_msg, self), to=LeaderElection.get_leader(rnd + 1))
 
     def process_timeout_msg(M):
         output('In function: process_timeout_msg')
@@ -68,8 +71,7 @@ class Run(process):
         Pacemaker.local_timeout_round()
 
     def run():
-        op = 'Starting Node '+ Safety.validator_id
+        op = 'Starting Node ' + Safety.validator_id
         output(op)
         while True:
             continue
-
