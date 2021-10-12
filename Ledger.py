@@ -41,13 +41,13 @@ class Ledger:
         self.commits[block_id] = bl
         self.deque.append(bl)
         printf("Committed block %d", block_id)
-        if (len(commit_queue) > q_size):
+        if len(commit_queue) > q_size:
             self.commits.pop(commits[self.commit_queue[0]])
             self.commit_queue.pop_left()
         return self.state_id
 
 
-def committed_block(block_id)
+def committed_block(block_id):
     return self.commits[block_id]
 
 
