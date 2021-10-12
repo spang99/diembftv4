@@ -9,10 +9,19 @@ from Safety import *
 
 config(channel='fifo', clock='Lamport')
 
+<<<<<<< HEAD:Validators.da
+class Validator(process):
+    def setup(validators:set, exit_cnt:int): pass
+
+    #sends a message to another validator
+    def send_message(msg_type, msg_object):
+        send((msg_type, msg_object, self))
+=======
 
 class Run(process):
     def setup(validators: set):
         pass
+>>>>>>> 2f5f926e5e15b275ff01c09930fa30b641bc0f96:Run.da
 
     def process_certificate_qc(qc):
         output('In function: process_certificate_qc')
@@ -55,6 +64,10 @@ class Run(process):
         output('In function: process_new_round_event')
         if u is LeaderElection.get_leader(Pacemaker.current_round):
             b = BlockTree.generate_block(MemPool.get_transactions(), Pacemaker.current_round)
+            if (b.payload == "Exit"):
+                exit_cnt += 1
+            if exit_cnt is 3:
+		sys.exit("No more requests from client")
             P = BlockTree.ProposalMsg(b, last_tc, BlockTree.high_commit_qc)
             send(("ProposalMsg", P, self), to=validators)
 
@@ -73,5 +86,5 @@ class Run(process):
     def run():
         op = 'Starting Node ' + Safety.validator_id
         output(op)
-        while True:
+        while exit_cnt<3:
             continue
