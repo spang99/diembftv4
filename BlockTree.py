@@ -66,6 +66,14 @@ class QC:
         printf('Created new QC class')
 
 
+class TimeoutMsg:
+    def __init__(self, tmo_info, last_round_tc, high_commit_info):
+        self.tmo_info = tmo_info
+        self.last_round_tc = last_round_tc
+        self.high_commit_info = high_commit_info
+        print('Created new TimeoutMsg class')
+
+
 class TC:
     def __init__(self, round, tmo_high_qc_rounds, tmo_signatures):
         self.round = round
