@@ -1,0 +1,75 @@
+#change definition of send messages everywhere
+from Safety import *
+from Pacemaker import *
+from BlockTree import *
+from MemPool import *
+from Ledger import *
+from LeaderElection import *
+import sys
+config(channel='fifo', clock='Lamport')
+
+class Run(process):
+    def setup(validators:set): pass
+
+    def process_certificate_qc(qc):
+        output('In function: process_certificate_qc')
+        BlockTree.process_qc(qc)
+        LedgerElection.update_leaders(qc)
+        Pacemaker.advance_round(qc.vote_info.rnd)
+
+    def process_proposal_msg(P, sender)
+        output('In function: process_proposal_msg')
+        process_certificate_qc(P.block.qc)
+        process_certificate_qc(P.high_commit_qc)
+        Pacemaker.advance_round_tc(P.last_round_tc)
+        current_round = Pacemaker.current_round
+        leader = LeaderElection.get_leader(current_round)
+        if (P.block.round is not current_round) or (sender is not leader) or (bl.author is not leader):
+            return
+        BlockTree.execute_and_insert(block)
+        vote_msg = Safety.make_vote(block, last_round_tc)
+        if vote_msg is None:
+            send(("VoteMsg", vote_msg, self), to=LeaderElection.get_leader(rnd+1))
+
+    def process_timeout_msg(M):
+        output('In function: process_timeout_msg')
+        process_certificate_qc(M.tmo_info.high_qc)
+        process_certificate_qc(M.high_commit_qc)
+        Pacemaker.advance_round_tc(M.last_round_tc)
+        tc = Pacemaker.process_remote_timeout(M)
+        if tc is not None:
+            Pacemaker.advance_round(tc)
+            process_new_round_event(tc)
+
+    def process_vote_msg(M):
+        output('In function: process_vote_msg')
+        qc = BlockTree.process_vote(M)
+        if qc is not None:
+            process_certificate_qc(qc)
+            process_new_round_event(None)
+
+    def process_new_round_event(last_tc):
+        output('In function: process_new_round_event')
+        if u is LeaderElection.get_leader(Pacemaker.current_round):
+            b = BlockTree.generate_block(MemPool.get_transactions(), Pacemaker.current_round)
+            P = BlockTree.ProposalMsg(b, last_tc, BlockTree.high_commit_qc)
+            send(("ProposalMsg", P, self), to=validators)
+
+    def receive(msg=("ProposalMsg", P, sender)):
+        process_proposal_msg(P, sender)
+
+    def receive(msg=("TimeoutMsg", M, sender)):
+        process_timeout_msg(M)
+
+    def receive(msg=("VoteMsg", M, sender)):
+        process_vote_msg(M)
+
+    def receive(msg=("LocalTimeout", M, sender)):
+        Pacemaker.local_timeout_round()
+
+    def run():
+        op = 'Starting Node '+ Safety.validator_id
+        output(op)
+        while True:
+            continue
+
