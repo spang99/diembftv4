@@ -7,14 +7,6 @@ exclude_size = f + 1
 reputation_leaders = None
 
 
-# def set_fields(vals, w_size, e_size, r_leaders):
-#     global validators, window_size, exclude_size, reputation_leaders
-#     validators = vals
-#     window_size = w_size
-#     exclude_size = e_size
-#     reputation_leaders = r_leaders
-
-
 def elect_reputation_leader(qc):
     print("In function: LeaderElection.elect_reputation_leader")
     global window_size, exclude_size
@@ -27,7 +19,8 @@ def elect_reputation_leader(qc):
         block_author = current_block.author
         if i < window_size:
             # signers is a set of validator ids
-            active_validators.add(current_qc.signatures.signers())
+            for signer in current_qc.signature.signers():
+                active_validators.add(signer)
         if len(last_authors) < exclude_size:
             # see safety validator id
             last_authors.add(block_author)
