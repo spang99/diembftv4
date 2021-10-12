@@ -32,12 +32,12 @@ class Client(process):
         self.f = config['f']  # faulty validators
         self.timeout = config['timeout']  # wait for 2f+1 replies
 
-    def receive(msg=('reply', reqid, result), from_=p):
+    def receive(msg=('reply', reply), from_=p):
         output(f"Received reply from {p} for RequestID: ...{reqid[-5:]}")
-        if reqid in replies:
-            replies[reqid].append(result)
+        if reply[0] in replies:
+            replies[reply[0]].append(reply[1])
         else:
-            replies[reqid] = [result]
+            replies[reply[0]] = [reply[1]]
 
     def run():
         for i in range(1, work_load.numrequests + 1):
