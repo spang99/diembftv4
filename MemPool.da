@@ -1,21 +1,14 @@
+from Client import Request
 import queue
 from collections import deque
 
 
-class Request:
-    def __init__(self, id, cmd):
-        self.id = id
-        # It is assumed that commands are of the form str(c)+"-"+str(i), where i refers
-        # to the ith command from client c.
-        self.cmd = cmd
-
-
-# pool of submitted but not yet executed requests
+# pool of submitted but not yet executed requests/transactions
 _request_pool = queue.Queue()
 
 
-# cache of 20 most recently executed requests
-_cached_requests = deque(['']*20, maxlen=20)
+# cache of 20 most recently executed requests/transactions replies
+_cached_results = deque(['']*20, maxlen=20)
 
 
 def get_transactions():
@@ -28,16 +21,27 @@ def get_transactions():
         return None
 
 
-def submit_request(request):
+def add_request(req):
     # first check if this is a retransmitted request
-    for cached_request_id, cached_result in _cached_requests:
+    for cached_request_id, cached_result in _cached_results:
         if cached_request_id == request.id:
-            # resend cached_result to client
+            output("Sending a cached response.")
+            send(msg=('reply', req.id, cached_result), to=req.client)
             return
     # add request to _request_pool
-    _request_pool.put(request)
+    _request_pool.put(req)
 
 
-def cache_request(request, result):
+def _cache_reply(request, result):
     # put an executed request in the cache
-    _cached_requests.appendleft((request.id, result))
+    for reqid, _ in _cached_results:
+        if request.id == reqid:
+            # already cached
+            return
+    _cached_results.appendleft((request.id, result))
+
+
+def send_reply(req):
+    result = "Your cmd: "+req.cmd+" was committed."
+    send(msg=('reply', req.id, result), to=req.client)
+    _cache_reply(req, result)
