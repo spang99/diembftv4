@@ -21,7 +21,7 @@ def get_round_timer(r):
 
 def start_timer(new_round):
     print("In function: Pacemaker.start_timer")
-    global current_round, time_started
+    global current_round
     stop_timer(current_round)
     current_round = new_round
     # start local timer for round current round for duration get round timer(current round)
@@ -60,7 +60,7 @@ def process_remote_timeout(tmo):
 
 
 def stop_timer(r):
-    global time_stopped
+    # global time_stopped
     print("In function: Pacemaker.stop_timer")
     # time_stopped = time.perf_counter()
 
