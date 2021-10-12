@@ -1,7 +1,7 @@
 import queue
 from Client import Request
 from collections import deque
-from Validators import send_message
+from Validator import send_message
 
 # pool of submitted but not yet executed requests/transactions
 _request_pool = queue.Queue()

@@ -1,7 +1,7 @@
 import time
 from BlockTree import *
 from Safety import *
-from Validators import *
+from Validator import *
 
 current_round = 0
 last_round_tc = None
