@@ -42,5 +42,5 @@ def _cache_reply(request, result):
 
 def send_reply(req):
     result = "Your cmd: " + req.cmd + " was committed."
-    send(msg=('reply', req.id, result), to=req.client)
+    Validator.send_message('reply', (req.id, result), req.client)
     _cache_reply(req, result)
