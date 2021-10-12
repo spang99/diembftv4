@@ -93,4 +93,4 @@ def broadcast(msg):
     print("In function: Pacemaker.broadcast")
     # send a timeoutMsg to all other validators
     # for validator in LeaderElection.validators:
-    Validators.send_message('TimeoutMsg', msg, Validators.validators)
+    Validator.send_message('TimeoutMsg', msg, Validator.validators)
