@@ -1,8 +1,10 @@
-from Ledger import *
-from Safety import *
+import Ledger
+import Safety
 from collections import defaultdict
 import nacl.hash
 import nacl.encoding
+from collections import deque
+
 
 class Block:
     def __init__(self, author, round, payload, qc, id):
@@ -11,7 +13,7 @@ class Block:
         self.payload = payload
         self.qc = qc
         self.id = id
-        output('Created new Block class')
+        print('Created new Block class')
 
 
 class PendingBlockTree:
@@ -19,33 +21,33 @@ class PendingBlockTree:
         self.root = b.qc.vote_info.parent_id
         self.blocks = {}  # maps a block_id to a block
         self.blocks[b.id] = b
-        output('Created new PendingBlockTree class object')
+        print('Created new PendingBlockTree class object')
 
 
 class PendingBlockTreeQueue:
-    def __init__(self,):
+    def __init__(self):
         self.tree = deque()
-        output('PendingBlockTreeQueue object created')
+        print('PendingBlockTreeQueue object created')
 
     def add(self, b):
-        output('In function PendingBlockTreeQueue.add(); Adding new block to PendingBlockTreeQueue class')
+        print('In function PendingBlockTreeQueue.add(); Adding new block to PendingBlockTreeQueue class')
         t = PendingBlockTree(b)
         self.tree.append(t)
 
     def prune(self, root):
-        output('In function PendingBlockTreeQueue.prune()')
+        print('In function PendingBlockTreeQueue.prune()')
         if self.tree[0].root is root:
-            output('Pruning Block %d PendingBlockTreeQueue class', root)
+            print('Pruning Block %d PendingBlockTreeQueue class', root)
             self.tree.popleft()
         else:
-            output('Could not prune: INCONSISTENT STATE')
+            print('Could not prune: INCONSISTENT STATE')
 
 
 class LedgerCommitInfo:
     def __init__(self, commit_state_id, vote_info_hash):
         self.commit_state_id = id
         self.vote_info_hash = vote_info_hash
-        output('Created new LedgerCommitInfo class')
+        print('Created new LedgerCommitInfo class')
 
 
 class ProposalMsg:
@@ -53,8 +55,9 @@ class ProposalMsg:
         self.block = block
         self.last_round_tc = last_round_tc
         self.high_commit_qc = high_commit_qc
-        self.signature = Safety.signing_key.sign(block.id)  # signing_key expected in Safety module
-        output('Created new ProposalMsg class')
+        # signing_key expected in Safety module
+        self.signature = Safety.signing_key.sign(block.id)
+        print('Created new ProposalMsg class')
 
 
 class QC:
@@ -64,8 +67,9 @@ class QC:
         self.high_commit_qc = high_commit_qc
         self.signatures = signatures
         self.author = sender
-        self.author_signature = Safety.signing_key.sign(signatures)  # signing_key expected in Safety module
-        output('Created new QC class')
+        self.author_signature = Safety.signing_key.sign(
+            signatures)  # signing_key expected in Safety module
+        print('Created new QC class')
 
 
 class TimeoutMsg:
@@ -73,7 +77,7 @@ class TimeoutMsg:
         self.tmo_info = tmo_info
         self.last_round_tc = last_round_tc
         self.high_commit_info = high_commit_info
-        output('Created new TimeoutMsg class')
+        print('Created new TimeoutMsg class')
 
 
 class TC:
@@ -81,7 +85,7 @@ class TC:
         self.round = round
         self.tmo_high_qc_rounds = tmo_high_qc_rounds
         self.tmo_signatures = tmo_signatures
-        output('Created new TC class')
+        print('Created new TC class')
 
 
 class TimeoutInfo:
@@ -89,8 +93,9 @@ class TimeoutInfo:
         self.round = round
         self.high_qc = high_qc
         self.sender = sender
-        self.signature = Safety.signing_key.sign(high_qc.round)  # signing_key expected in Safety module
-        output('Created new TimeoutInfo class')
+        # signing_key expected in Safety module
+        self.signature = Safety.signing_key.sign(high_qc.round)
+        print('Created new TimeoutInfo class')
 
 
 class VoteInfo:
@@ -100,7 +105,7 @@ class VoteInfo:
         self.parent_id = parent_id
         self.parent_round = parent_round
         self.exec_state_id = exec_state_id
-        output('Created new VoteInfo class')
+        print('Created new VoteInfo class')
 
 
 class VoteMsg:
@@ -109,61 +114,74 @@ class VoteMsg:
         self.ledger_commit_info = ledger_commit_info
         self.high_commit_qc = high_commit_qc
         self.sender = sender
-        self.signature = Safety.signing_key.sign(ledger_commit_info)  # signing_key expected in Safety module
-        output('Created new VoteMsg class')
+        # signing_key expected in Safety module
+        self.signature = Safety.signing_key.sign(ledger_commit_info)
+        print('Created new VoteMsg class')
 
 
-class BlockTree:
-    high_commit_qc = None
-    high_qc = None
-    pending_block_tree = PendingBlockTreeQueue()
-    pending_votes = defaultdict(list)  # Declaring as dictionary for quick search
-    vote_idx = None
-    f = None
+high_commit_qc = None
+high_qc = None
+pending_block_tree = PendingBlockTreeQueue()
+# Declaring as dictionary for quick search
+pending_votes = defaultdict(list)
+vote_idx = None
+f = 0
 
-    def process_qc(self, qc):
-        output('In function: process_qc')
-        if (qc.ledger_commit_info.commit_state_id is not None) and (qc.vote_info.parent_id not in Ledger.commits):
-            # included additional check to prevent committing an already committed block
-            Ledger.commit(qc.vote_info.parent_id)
-            self.pending_block_tree.prune(qc.vote_info.parent_id)  # replace prune
-            if qc.vote_info.round > self.high_commit_qc.vote_info.round:
-                self.high_commit_qc = qc
-        if qc.vote_info.round > BlockTree.high_qc.vote_info.round:
-            self.high_qc = qc
 
-    # sequence of the following function has been changed as we are not maintaining any speculate tree in Ledger
-    def execute_and_insert(self, b):
-        output('In function: execute_and_insert')
-        BlockTree.pending_block_tree.add(t)
-        Ledger.speculate(b.qc.block_id, b.id, b.payload)
+def process_qc(qc):
+    global pending_block_tree, high_commit_qc, high_qc
+    print('In function: process_qc')
+    if (qc.ledger_commit_info.commit_state_id is not None) and (qc.vote_info.parent_id not in Ledger.commits):
+        # included additional check to prevent committing an already committed block
+        Ledger.commit(qc.vote_info.parent_id)
+        pending_block_tree.prune(
+            qc.vote_info.parent_id)  # replace prune
+        if qc.vote_info.round > high_commit_qc.vote_info.round:
+            high_commit_qc = qc
+    if qc.vote_info.round > high_qc.vote_info.round:
+        high_qc = qc
 
-    def verify_signature(self, v):
-        verify_key = Safety.get_verify_key(v.sender)
-        try:
-            verify_key.verify(v.signature)
-        except:
-            output('Incorrect Signature')
-            return False
-        return True
+# sequence of the following function has been changed as we are not maintaining any speculate tree in Ledger
 
-    def process_vote(self, v):  # v is of type VoteMsg
-        output('In function: process_vote')
-        process_qc(v.high_commit_qc)
-        if verify_signature(v) is True:  # implement code for signature verification
-            vote_idx = nacl.hash.sha256(v.ledger_commit_info, nacl.encoding.HexEncoder)
-            self.pending_votes[vote_idx].append([v.sender, v.signature])
-            if len(BlockTree.pending_votes[vote_idx]) == 2 * f + 1:
-                qc = QC(v.vote_info, v.ledger_commit_info, BlockTree.pending_votes[vote_idx], \
-                        Safety.validator_id)
-                output('Created quorum certificate')
-                return qc
-        return None
 
-    def generate_block(self, txns, current_round):
-        output('In function: generate_block')
-        b = Block(Safety.validator_id, current_round, txns, high_commit_qc, nacl.hash.sha256 \
-            ([Safety.validator_id, current_round, self.high_commit_qc.vote_info_id, \
-              self.high_commit_qc.signatures], nacl.encoding.HexEncoder))
-        # qc replaced by high_commit_qc
-        return b
+def execute_and_insert(b):
+    global pending_block_tree
+    print('In function: execute_and_insert')
+    pending_block_tree.add(t)
+    Ledger.speculate(b.qc.block_id, b.id, b.payload)
+
+
+def verify_signature(v):
+    verify_key = Safety.get_verify_key(v.sender)
+    try:
+        verify_key.verify(v.signature)
+    except:
+        print('Incorrect Signature')
+        return False
+    return True
+
+
+def process_vote(v):  # v is of type VoteMsg
+    global pending_votes, f
+    print('In function: process_vote')
+    process_qc(v.high_commit_qc)
+    if verify_signature(v) is True:  # implement code for signature verification
+        vote_idx = nacl.hash.sha256(
+            v.ledger_commit_info, nacl.encoding.HexEncoder)
+        pending_votes[vote_idx].append([v.sender, v.signature])
+        if len(pending_votes[vote_idx]) == 2 * f + 1:
+            qc = QC(v.vote_info, v.ledger_commit_info, pending_votes[vote_idx],
+                    Safety.validator_id)
+            print('Created quorum certificate')
+            return qc
+    return None
+
+
+def generate_block(txns, current_round):
+    global high_commit_qc
+    print('In function: generate_block')
+    b = Block(Safety.validator_id, current_round, txns, high_commit_qc, nacl.hash.sha256
+              ([Safety.validator_id, current_round, high_commit_qc.vote_info_id,
+                  high_commit_qc.signatures], nacl.encoding.HexEncoder))
+    # qc replaced by high_commit_qc
+    return b

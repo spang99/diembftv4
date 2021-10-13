@@ -1,7 +1,6 @@
 import Ledger
 import nacl.hash
-from BlockTree import (BlockTree, VoteInfo, VoteMsg,
-                       TimeoutInfo, LedgerCommitInfo)
+import BlockTree
 from nacl.exceptions import BadSignatureError
 from nacl.signing import SigningKey
 from nacl.signing import VerifyKey
@@ -11,8 +10,10 @@ from nacl.signing import VerifyKey
 # these get assigned during process setup
 _private_key = None
 _public_keys = None
-_validator_id = None
+validator_id = None
 _f = None
+
+validators = None
 
 highest_vote_round = 0  # initially 0
 highest_qc_round = None
@@ -24,16 +25,21 @@ def set_private_key(key):
     _private_key = key
 
 
+# def get_validator_id():
+    # return _validator_id
+
 # set process public keys (caled during setup)
+
+
 def set_public_keys(keys):
     global _public_keys
     _public_keys = keys
 
 
 # set process validator_id (called during setup)
-def set_validator_id(id):
-    global _validator_id
-    _validator_id = id
+# def set_validator_id(id):
+    #global _validator_id
+    #_validator_id = id
 
 
 def set_f(f):
@@ -152,17 +158,17 @@ def make_vote(b, last_tc):
         _increase_highest_vote_round(b.round)
 
         exec_state_id = Ledger.pending_state(b.id)
-        vote_info = VoteInfo(id=b.id, round=b.round, parent_id=b.qc_vote_info.id, parent_round=qc_round,
-                             exec_state_id=exec_state_id)
+        vote_info = BlockTree.VoteInfo(id=b.id, round=b.round, parent_id=b.qc_vote_info.id, parent_round=qc_round,
+                                       exec_state_id=exec_state_id)
 
         vote_info_hash = nacl.hash.sha256((str(b.id) + str(b.round) + "-" +
                                            str(b.qc_vote_info.id) + str(qc_round) + "-" + exec_state_id).encode(),
                                           nacl.encoding.HexEncoder)
 
-        ledger_commit_info = LedgerCommitInfo(commit_state_id=_commit_state_id_candidate(
+        ledger_commit_info = BlockTree.LedgerCommitInfo(commit_state_id=_commit_state_id_candidate(
             b.round, b.qc), vote_info_hash=vote_info_hash)
 
-        return VoteMsg(vote_info, ledger_commit_info, BlockTree.high_commit_qc)
+        return BlockTree.VoteMsg(vote_info, ledger_commit_info, BlockTree.high_commit_qc)
     else:
         return None
 
@@ -179,6 +185,6 @@ def make_timeout(round, high_qc, last_tc):
             return None
         else:
             signature = _private_key.sign((round, high_qc.round))
-        return TimeoutInfo(round, high_qc, _validator_id, signature)
+        return BlockTree.TimeoutInfo(round, high_qc, _validator_id, signature)
     else:
         return None

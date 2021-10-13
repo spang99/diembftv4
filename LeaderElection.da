@@ -1,11 +1,14 @@
 import random
-from Ledger import *
-from PaceMaker import *
-from Validator import *
+import Ledger
+import PaceMaker
+import Validator
+import BlockTree
+import Safety
 
-validators = Validator.validators
-window_size = f
-exclude_size = f + 1
+
+validators = Safety.validators
+window_size = BlockTree.f
+exclude_size = BlockTree.f + 1
 reputation_leaders = []
 
 
@@ -47,6 +50,6 @@ def update_leaders(qc):
 def get_leader(rnd):
     global validators, reputation_leaders
     print("In function: LeaderElection.get_leader")
-    if (rnd, leader) in reputation_leaders:
-        return leader
+    if rnd in reputation_leaders:
+        return reputation_leaders[rnd]
     return validators[(rnd / 2) % len(validators)]

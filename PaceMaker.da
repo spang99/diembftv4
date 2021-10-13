@@ -1,7 +1,7 @@
 import time
-from BlockTree import *
-from Safety import *
-from Validator import *
+import BlockTree
+import Safety
+import Validator
 
 current_round = 0
 last_round_tc = None
@@ -14,13 +14,13 @@ delta = None
 
 
 def get_round_timer(r):
-    print("In function: Pacemaker.get_round_timer")
+    print("In function: PaceMaker.get_round_timer")
     # need to figure out formula
     return 4 * delta
 
 
 def start_timer(new_round):
-    print("In function: Pacemaker.start_timer")
+    print("In function: PaceMaker.start_timer")
     global current_round
     stop_timer(current_round)
     current_round = new_round
@@ -30,21 +30,24 @@ def start_timer(new_round):
 
 def local_timeout_round():
     global current_round
-    print("In function: Pacemaker.local_timeout_round")
+    print("In function: PaceMaker.local_timeout_round")
     save_consensus_state()
-    timeout_info = Safety.make_timeout(current_round, BlockTree.high_qc, last_round_tc)
-    broadcast(BlockTree.TimeoutMsg(timeout_info, last_round_tc, BlockTree.high_commit_qc))
+    timeout_info = Safety.make_timeout(
+        current_round, BlockTree.high_qc, last_round_tc)
+    broadcast(BlockTree.TimeoutMsg(timeout_info,
+              last_round_tc, BlockTree.high_commit_qc))
 
 
 def process_remote_timeout(tmo):
     # tmo is a timeout message
-    print("In function: Pacemaker.process_remote_timeout")
+    print("In function: PaceMaker.process_remote_timeout")
     global current_round, pending_timeouts
     tmo_info = tmo.tmo_info
     if tmo_info.round < current_round:
         return None
     if tmo_info.sender not in pending_timeouts[tmo_info.round].senders:
-        pending_timeouts[tmo_info.round] = pending_timeouts[tmo_info.round].add(tmo_info)
+        pending_timeouts[tmo_info.round] = pending_timeouts[tmo_info.round].add(
+            tmo_info)
     if len(pending_timeouts[tmo_info.round].senders) == BlockTree.f + 1:
         stop_timer(current_round)
         local_timeout_round()
@@ -61,12 +64,12 @@ def process_remote_timeout(tmo):
 
 def stop_timer(r):
     # global time_stopped
-    print("In function: Pacemaker.stop_timer")
+    print("In function: PaceMaker.stop_timer")
     # time_stopped = time.perf_counter()
 
 
 def advance_round_tc(tc):
-    print("In function: Pacemaker.advance_round_tc")
+    print("In function: PaceMaker.advance_round_tc")
     global current_round, last_round_tc
     if tc is None or tc.round < current_round:
         return False
@@ -76,13 +79,13 @@ def advance_round_tc(tc):
 
 
 def save_consensus_state():
-    print("In function: Pacemaker.save_consensus_state")
+    print("In function: PaceMaker.save_consensus_state")
     pass
 
 
 def advance_round_qc(qc):
     global current_round, last_round_tc
-    print("In function: Pacemaker.advance_round_qc")
+    print("In function: PaceMaker.advance_round_qc")
     if qc.vote_info.round < current_round:
         return False
     last_round_tc = None
@@ -90,7 +93,7 @@ def advance_round_qc(qc):
 
 
 def broadcast(msg):
-    print("In function: Pacemaker.broadcast")
+    print("In function: PaceMaker.broadcast")
     # send a timeoutMsg to all other validators
     # for validator in LeaderElection.validators:
     Validator.send_message('TimeoutMsg', msg, Validator.validators)

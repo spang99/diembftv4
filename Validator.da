@@ -1,34 +1,41 @@
 # change definition of send messages everywhere
 import sys
-from BlockTree import *
-from LeaderElection import *
-from Ledger import *
-from MemPool import *
-from Pacemaker import *
-from Safety import *
+import BlockTree
+import LeaderElection
+import Safety
+import MemPool
+import PaceMaker
 
 config(channel='fifo', clock='Lamport')
 
 
 class Validator(process):
-    def setup(validators: set, exit_cnt: int): pass
+    def setup(validators: set, exit_cnt: int, config):
+        print("Setting up validator")
+        # Safety.set_private_key(config['private_key'])
+        Safety.set_public_keys(config['public_keys'])
+        # Safety.set_validator_id(config['validator_id'])
+        Safety.validator_id = config['validator_id']
+        Safety.set_f(config['f'])
+        Safety.validators = config['validators']
+        BlockTree.f = config['f']
 
     # sends a message to another validator
     def send_message(msg_type, msg_object, recipient):
         send((msg_type, msg_object, self), to=recipient)
 
     def process_certificate_qc(qc):
-        output('In function: process_certificate_qc')
+        print('In function: process_certificate_qc')
         BlockTree.process_qc(qc)
-        LedgerElection.update_leaders(qc)
-        Pacemaker.advance_round(qc.vote_info.rnd)
+        LeaderElection.update_leaders(qc)
+        PaceMaker.advance_round(qc.vote_info.rnd)
 
     def process_proposal_msg(P, sender):
-        output('In function: process_proposal_msg')
+        print('In function: process_proposal_msg')
         process_certificate_qc(P.block.qc)
         process_certificate_qc(P.high_commit_qc)
-        Pacemaker.advance_round_tc(P.last_round_tc)
-        current_round = Pacemaker.current_round
+        PaceMaker.advance_round_tc(P.last_round_tc)
+        current_round = PaceMaker.current_round
         leader = LeaderElection.get_leader(current_round)
         if (P.block.round is not current_round) or (sender is not leader) or (bl.author is not leader):
             return
@@ -39,27 +46,27 @@ class Validator(process):
                  to=LeaderElection.get_leader(rnd + 1))
 
     def process_timeout_msg(M):
-        output('In function: process_timeout_msg')
+        print('In function: process_timeout_msg')
         process_certificate_qc(M.tmo_info.high_qc)
         process_certificate_qc(M.high_commit_qc)
-        Pacemaker.advance_round_tc(M.last_round_tc)
-        tc = Pacemaker.process_remote_timeout(M)
+        PaceMaker.advance_round_tc(M.last_round_tc)
+        tc = PaceMaker.process_remote_timeout(M)
         if tc is not None:
-            Pacemaker.advance_round(tc)
+            PaceMaker.advance_round(tc)
             process_new_round_event(tc)
 
     def process_vote_msg(M):
-        output('In function: process_vote_msg')
+        print('In function: process_vote_msg')
         qc = BlockTree.process_vote(M)
         if qc is not None:
             process_certificate_qc(qc)
             process_new_round_event(None)
 
     def process_new_round_event(last_tc):
-        output('In function: process_new_round_event')
-        if u is LeaderElection.get_leader(Pacemaker.current_round):
+        print('In function: process_new_round_event')
+        if u is LeaderElection.get_leader(PaceMaker.current_round):
             b = BlockTree.generate_block(
-                MemPool.get_transactions(), Pacemaker.current_round)
+                MemPool.get_transactions(), PaceMaker.current_round)
             if (b.payload == "Exit"):
                 exit_cnt += 1
             if exit_cnt is 3:
@@ -77,14 +84,14 @@ class Validator(process):
         process_vote_msg(M)
 
     def receive(msg=("LocalTimeout", M, sender)):
-        Pacemaker.local_timeout_round()
+        PaceMaker.local_timeout_round()
 
     def receive(msg=('Request', req), from_=sender):
-        output("Received request from client.")
+        print("Received request from client.")
         add_request(req)
 
     def run():
         op = 'Starting Node ' + Safety.validator_id
-        output(op)
+        print(op)
         while exit_cnt < 3:
             continue

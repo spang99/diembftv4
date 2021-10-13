@@ -1,7 +1,10 @@
 from datetime import datetime
 from nacl.signing import SigningKey
 from nacl.signing import VerifyKey
+import nacl.hash
 from time import sleep
+
+config(channel='fifo', clock='Lamport')
 
 
 class Request:
@@ -23,6 +26,7 @@ class Workload:
 
 class Client(process):
     def setup(config):
+        print("Setting up client")
         # setup the client
         # config is a dictionary with config information
         self.work_load = config["workload"]
@@ -33,7 +37,7 @@ class Client(process):
         self.timeout = config['timeout']  # wait for 2f+1 replies
 
     def receive(msg=('reply', reply), from_=p):
-        output(f"Received reply from {p} for RequestID: ...{reqid[-5:]}")
+        print(f"Received reply from {p} for RequestID: ...{reqid[-5:]}")
         if reply[0] in replies:
             replies[reply[0]].append(reply[1])
         else:
@@ -49,18 +53,19 @@ class Client(process):
             reqid_str = reqid.decode()
             signature = private_key.sign(reqid)
             req = Request(reqid_str, cmd, client, signature)
-            send(('request', req), to=validators)
+            print(f"Sending request to validators:{validators}")
+            send(('Request', req), to=validators)
             replies[reqid_str] = []
             -- reply
             # limitation: doesn't make sure replies are from unique validators
             if await(len(replies[reqid_str]) == 2 * f + 1):
-                output(f"{cmd} was committed, result:{replies[reqid_str][0]}")
+                print(f"{cmd} was committed, result:{replies[reqid_str][0]}")
                 continue
             elif timeout(timeout):
                 # retransmit request
-                output("retransmitting due to timeout")
+                print("retransmitting due to timeout")
 
-        output("Finished workload and exiting")
+        print("Finished workload and exiting")
         # in main, you can use await(each(c in clients, has=received(('finished_workload',), from_=c)))
         # in order to determine when all clients have finished their workloads and you can tell
         # validators to exit
