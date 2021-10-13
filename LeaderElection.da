@@ -15,8 +15,8 @@ reputation_leaders = []
 def elect_reputation_leader(qc):
     print("In function: LeaderElection.elect_reputation_leader")
     global window_size, exclude_size
-    active_validators = {}
-    last_authors = {}
+    active_validators = set()
+    last_authors = set()
     current_qc = qc
     i = 0
     while i < window_size or len(last_authors) < exclude_size:
