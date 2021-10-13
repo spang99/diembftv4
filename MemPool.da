@@ -6,8 +6,8 @@ import Validator
 # pool of submitted but not yet executed requests/transactions
 _request_pool = queue.Queue()
 
-# cache of 20 most recently executed requests/transactions replies
-_cached_results = deque([''] * 20, maxlen=20)
+# cache of recently executed requests/transactions replies
+_cached_results = []
 
 
 def get_transactions():
@@ -21,15 +21,20 @@ def get_transactions():
 
 
 def add_request(req):
+    print("MemPool add_request called.")
     # first check if this is a retransmitted request
-    for cached_request_id, cached_result in _cached_results:
+
+    for (cached_request_id, cached_result) in _cached_results:
         if cached_request_id == req.id:
             print("Sending a cached response.")
             Validator.send_message(
                 'reply', (req.id, cached_result), req.client)
             return
+
     # add request to _request_pool
+    print("Adding request to pool")
     _request_pool.put(req)
+    print("Added to queue.")
 
 
 def _cache_reply(request, result):

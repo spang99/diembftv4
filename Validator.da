@@ -86,12 +86,15 @@ class Validator(process):
     def receive(msg=("LocalTimeout", M, sender)):
         PaceMaker.local_timeout_round()
 
-    def receive(msg=('Request', req), from_=sender):
-        print("Received request from client.")
-        add_request(req)
+    def receive(msg=('Request', req), from_=p):
+        print(
+            f"Received request from client:{p}.")
+        MemPool.add_request(req)
 
     def run():
         op = 'Starting Node ' + Safety.validator_id
         print(op)
-        while exit_cnt < 3:
-            continue
+        await(exit_cnt >= 3)
+
+        # while exit_cnt < 3:
+        #    continue
