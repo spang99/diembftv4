@@ -149,7 +149,7 @@ def setup_BlockTree():
 def process_qc(qc):
     global pending_block_tree, high_commit_qc, high_qc
     print(f'{Safety.validator_id}: In function: process_qc.')
-
+    committed_request = None
     # If received genesis QC and round is 0, return because genesis QC is already highqc and has no info
     if qc.vote_info.round == 0 and PaceMaker.current_round == 1:
         return
@@ -157,7 +157,7 @@ def process_qc(qc):
     if qc.ledger_commit_info.commit_state_id and (qc.vote_info.parent_id not in Ledger.commits):
         # included additional check to prevent committing an already committed block
         print(f"{Safety.validator_id}: Commiting block id,round: {qc.vote_info.parent_id,qc.vote_info.parent_round}")
-        Ledger.commit(qc.vote_info.parent_id)
+        committed_request = Ledger.commit(qc.vote_info.parent_id)
         try:
             # remove pending request from mempool
             MemPool.pending_requests.remove(
@@ -171,17 +171,16 @@ def process_qc(qc):
             #print(f"{Safety.validator_id}: payload:{pending_block_tree[qc.vote_info.parent_id].payload},pending:{MemPool.pending_requests}. {Safety.validator_id}")
             pass
 
-        # send reply to client
-        # MemPool.send_reply(pending_block_tree[qc.vote_info.parent_id].payload)
-
         # pending_block_tree.prune(qc.vote_info.parent_id)  # replace prune
         if high_commit_qc:
             if qc.vote_info.round > high_commit_qc.vote_info.round:
                 high_commit_qc = qc
         else:
             high_commit_qc = qc
+
     if qc.vote_info.round > high_qc.vote_info.round:
         high_qc = qc
+    return committed_request
 
 # sequence of the following function has been changed as we are not maintaining any speculate tree in Ledger
 

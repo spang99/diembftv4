@@ -74,6 +74,7 @@ def commit(block_id):
     f.write(block.payload)
     f.close()
     commits[block_id] = block
+    return block.payload
 
 
 def committed_block(block_id):

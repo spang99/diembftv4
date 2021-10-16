@@ -35,12 +35,25 @@ class Validator(process):
     def send_message(msg_type, msg_object, recipient):
         send((msg_type, msg_object), to=recipient)
 
+    def send_reply(cmd):
+        result = "Your cmd: "+cmd+" was committed by "+str(self)
+        client_str = cmd.split('-')[0]
+        reqid = int(cmd.split('-')[1])
+        client = MemPool.clients[client_str]
+        MemPool.cache_reply(cmd, result)
+        output(f"Sending reply to {client} for {cmd}")
+        send(('Reply', (reqid, result)), to=client)
+
     def process_certificate_qc(qc):
         if qc == None:
             output("Empty qc")
             return
         output(f'In function: process_certificate_qc.')
-        BlockTree.process_qc(qc)
+        committed_request = BlockTree.process_qc(qc)
+        if committed_request:
+            # send reply to the client
+            send_reply(committed_request)
+
         LeaderElection.update_leaders(qc)
         if PaceMaker.advance_round_qc(qc) and len(MemPool.pending_requests) > 0:
             # start new round timer

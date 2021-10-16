@@ -57,13 +57,13 @@ def add_request(req):
     print("Added to queue.")
 
 
-def _cache_reply(req, result):
+def cache_reply(cmd, result):
     # put an executed request in the cache
     for reqcmd, _ in _cached_results:
-        if req.cmd == reqcmd:
+        if cmd == reqcmd:
             # already cached
             return
-    _cached_results.append((req.cmd, result))
+    _cached_results.append((cmd, result))
 
 
 def send_reply(cmd):
@@ -74,4 +74,4 @@ def send_reply(cmd):
     client_str = cmd.split('-')[0]
     reqid = int(cmd.split('-')[1])
     # validator_object.send_message('reply', (reqid, result), clients[client_str])
-    _cache_reply(cmd, result)
+    cache_reply(cmd, result)
