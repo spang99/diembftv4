@@ -44,9 +44,7 @@ def add_request(req):
 
     for (cmd, cached_result) in _cached_results:
         if req.cmd == cmd:
-            #print("Sending a cached response.")
-            Validator.send_message(
-                'reply', (req.id, cached_result), req.client)
+            # Sending a cached response
             return (req.id, cached_result)
 
     # add request to _request_pool

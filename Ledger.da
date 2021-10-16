@@ -69,7 +69,7 @@ def commit(block_id):
     if block_id not in BlockTree.pending_block_tree:
         #print(f"{Safety.validator_id}: Invalid block id to commit")
         return
-    block = BlockTree.pending_block_tree[block_id]
+    block = BlockTree.pending_block_tree[block_id].block
     f = open(filename, 'a')
     f.write(block.payload)
     f.close()

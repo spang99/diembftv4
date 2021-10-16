@@ -115,6 +115,13 @@ class VoteMsg:
         #print(f'{Safety.validator_id}: Created new VoteMsg class')
 
 
+class BlockNode:
+    def __init__(self, block, children=None):
+        self.block = block
+        if children is None:
+            self.children = []
+
+
 high_commit_qc = None
 high_qc = None
 pending_block_tree = {}  # Use a dictionary, indexed by block id
@@ -142,8 +149,28 @@ def setup_BlockTree():
         id=genesis_blockid, round=0, parent_id=None, parent_round=None, exec_state_id=None)
     genesis_qc = QC(vote_info=genesis_qc_vote_info,
                     ledger_commit_info=None, signatures=None, author=None)
-    pending_block_tree[genesis_blockid] = genesis_block
+    genesis_block_node = BlockNode(genesis_block)
+    pending_block_tree[genesis_blockid] = genesis_block_node
     high_qc = genesis_qc
+
+
+def pending_block_tree_prune(newroot_id):
+    global pending_block_tree
+    print(f"\t\t\t\tPREV PENDING_BLOCK_TREE:{pending_block_tree}")
+    nodes_to_keep = []
+    children = pending_block_tree[newroot_id].children
+    while (len(children) > 0):
+        curr = children.pop(0)
+        if curr == None:
+            continue
+        nodes_to_keep.append(pending_block_tree[curr])
+        # keep its children as well
+        children += pending_block_tree[curr].children
+    pending_block_tree.clear()
+    for node in nodes_to_keep:
+        pending_block_tree[node.block.id] = node
+
+    print(f"\t\t\t\tCURRENT PENDING_BLOCK_TREE:{pending_block_tree}")
 
 
 def process_qc(qc):
@@ -157,22 +184,26 @@ def process_qc(qc):
     if qc.ledger_commit_info.commit_state_id and (qc.vote_info.parent_id not in Ledger.commits):
         # included additional check to prevent committing an already committed block
         print(
-            f"{Safety.validator_id}: Committing block cmd,round: {pending_block_tree[qc.vote_info.parent_id].payload,qc.vote_info.parent_round}")
+            f"{Safety.validator_id}: Committing block cmd,round: {pending_block_tree[qc.vote_info.parent_id].block.payload,qc.vote_info.parent_round}")
         committed_request = Ledger.commit(qc.vote_info.parent_id)
         try:
             # remove pending request from mempool
             MemPool.pending_requests.remove(
-                pending_block_tree[qc.vote_info.parent_id].payload)
+                pending_block_tree[qc.vote_info.parent_id].block.payload)
             if Safety.validator_id == str(LeaderElection.get_leader(PaceMaker.current_round+1)) and len(MemPool.pending_requests) == 0:
                 # Since this may empty the pending requests pool, leader may not propose an empty block to allow other
                 # validators who don't have this qc to commit the commit_state_id. This variable ensures other validators
                 # get the qc
                 MemPool.progress_pending_cmd = True
+            if committed_request:
+                # pass
+                # prune
+                pending_block_tree_prune(qc.vote_info.parent_id)
+
         except:
             #print(f"{Safety.validator_id}: payload:{pending_block_tree[qc.vote_info.parent_id].payload},pending:{MemPool.pending_requests}. {Safety.validator_id}")
             pass
 
-        # pending_block_tree.prune(qc.vote_info.parent_id)  # replace prune
         if high_commit_qc:
             if qc.vote_info.round > high_commit_qc.vote_info.round:
                 high_commit_qc = qc
@@ -190,7 +221,10 @@ def execute_and_insert(b):
     global pending_block_tree
     #print(f'{Safety.validator_id}: In function: execute_and_insert.')
     Ledger.speculate(b.qc.vote_info.id, b.id, b.payload)
-    pending_block_tree[b.id] = b
+    block_node = BlockNode(b)
+    pending_block_tree[b.id] = block_node
+    # Add itself to children of parent block (simulating a tree)
+    pending_block_tree[b.qc.vote_info.id].children.append(b.id)
 
 
 def verify_signature(v):
