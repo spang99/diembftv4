@@ -13,10 +13,13 @@ _public_keys = None
 validator_id = None
 _f = None
 
+node_map = {} #maps validator_id to process_id
+rev_node_map = {} #maps process_id to validator_id
+
 validators = None
 
-highest_vote_round = 0  # initially 0
-highest_qc_round = None
+highest_vote_round = -1  # initially -1
+highest_qc_round = -1
 
 
 # set process private key (called during setup)
@@ -47,59 +50,73 @@ def set_f(f):
     _f = f
 
 
-def _increase_highest_vote_round(round):
+def _increase_highest_vote_round(rnd):
     # commit not to vote in rounds lower than round
+    print('##################In function: _increase_highest_vote_round########################')
     global highest_vote_round
-    highest_vote_round = max(round, highest_vote_round)
+    highest_vote_round = max(rnd, highest_vote_round)
 
 
 def _update_highest_qc_round(qc_round):
+    print('###############In function: _update_highest_qc_round########################')
     global highest_qc_round
     highest_qc_round = max(qc_round, highest_qc_round)
 
 
-def _consecutive(block_round, round):
-    return round + 1 == block_round
+def _consecutive(block_round, rnd):
+    if rnd + 1 == block_round:
+        print('*********_consecutive Returning True***********')
+    else:
+        print('*********_consecutive Returning False***********')
+    return rnd + 1 == block_round
 
 
 def _safe_to_extend(block_round, qc_round, tc):
+    print('*********In function: _safe_to_extend***********')
     if tc == None:
         print("Discarding message: No TC")
         return False
-    return _consecutive(block_round, tc.round) and (qc_round >= max(tc.tmo_high_qc_rounds))
+    return _consecutive(block_round, tc.rnd) and (qc_round >= max(tc.tmo_high_qc_rounds))
 
 
 def _safe_to_vote(block_round, qc_round, tc):
     global highest_vote_round
+    print('***********In function: _safe_to_vote*************')
     if block_round <= max(highest_vote_round, qc_round):
         # 1. must vote in monotonically increasing rounds
         # 2. must extend a smaller round
+        print(f'***********Exit _safe_to_vote: {block_round, highest_vote_round, qc_round}Returning false*************')
         return False
+    print(f'***********Exit _safe_to_vote with {_consecutive(block_round, qc_round) or _safe_to_extend(block_round, qc_round, tc)}*************')
     return _consecutive(block_round, qc_round) or _safe_to_extend(block_round, qc_round, tc)
 
 
-def _safe_to_timeout(round, qc_round, tc):
+def _safe_to_timeout(rnd, qc_round, tc):
     global highest_qc_round, highest_vote_round
     if (qc_round < highest_qc_round) or (round <= max(highest_vote_round - 1, qc_round)):
         # respect highest_qc_round and don't timeout in a past round
         return False
-    return _consecutive(round, qc_round) or _consecutive(round, tc.round)
+    return _consecutive(rnd, qc_round) or _consecutive(rnd, tc.rnd)
 
 
 def _commit_state_id_candidate(block_round, qc):
     # find the commited id in case a qc is formed in the vote round
-    if _consecutive(block_round, qc.vote_info.round):
-        return Ledger.pending_state(qc.id)
+    print(f'\033[1;32m >>>>>>>>>>>>>>>In function: _commit_state_id_candidate<<<<<<<<<<<<<<<<<<<\033[1;37m')
+    if (qc is not None) and (_consecutive(block_round, qc.vote_info.rnd)):
+        return Ledger.pending_state(qc.vote_info.id)
     else:
         return None
 
 
 def _valid_signature(key, signature):
+    print('\033[1;34m >>>>>>>>>>In Function: _valid_signature<<<<<<<<<<<<< \033[1;37m')
     try:
         valid_signature = key.verify(signature)
     except BadSignatureError:
         print("Discarding message: Signature was forged or corrupted.")
         return False
+    print('\033[1;34m >>>>>>>>>>Exit: _valid_signature, return True<<<<<<<<<<<<< \033[1;37m')
+    return True
 
 
 def _valid_signatures_make_vote(b, last_tc):
@@ -108,7 +125,7 @@ def _valid_signatures_make_vote(b, last_tc):
 
 def _valid_signatures(qc, last_tc):
     # perform signature checking
-
+    print('>>>>>>>>>>In Function: _valid_signatures<<<<<<<<<<<<<')
     global _f, _validator_id
 
     if last_tc:
@@ -123,25 +140,32 @@ def _valid_signatures(qc, last_tc):
             if not _valid_signature(_public_keys[sender], signature):
                 return False
 
+    if qc is None:
+        print('>>>>>>>>>>>>>Exit _valid_signatures with true<<<<<<<<<<<<<<<<')
+        return True
     # now check signatures within the block (qc)
-    if qc.author not in _public_keys:
+    if qc.author not in node_map:
         # this implementation requires validators to also keep thier own public key in public_keys,
         # since it's possible that the received qc could be authored by itself in the case of multiple
         # view changes
-        print("Discarding message: Unknown author.")
+        print("\033[1;34m Discarding message: Unknown author. \033[1;34m")
         return False
+    print(_public_keys[qc.author], qc.author_signature)
     if not _valid_signature(_public_keys[qc.author], qc.author_signature):
+        print(f'\033[1;34m **********Returning False{_public_keys[qc.author], qc.author_signature}*************** \033[1;37m')
         return False
     if len(qc.signatures) < 2 * _f + 1:
-        print("Discarding message: QC does not have a quorum of signatures.")
+        print("\033[1;34m Discarding message: QC does not have a quorum of signatures.\033[1;37m")
         return False
     for sender, signature in qc.signatures:
-        if sender not in _public_keys:
-            print("Discarding message: Unknown signature in QC")
+        if sender not in node_map:
+            print("\033[1;34m Discarding message: Unknown signature in QC \033[1;37m")
             return False
         if not _valid_signature(_public_keys[sender], signature):
+            print("\033[1;34m Not valid signature \033[1;37m")
             return False
-
+    
+    print('>>>>>>>>>>>>>Exit _valid_signatures with true<<<<<<<<<<<<<<<<')
     return True
 
 
@@ -151,40 +175,51 @@ def _valid_signatures(qc, last_tc):
 def make_vote(b, last_tc):
     # b is the block to vote on
     # last_tc is the timeout certificate for the previous round, else ⊥
-
-    qc_round = b.qc.vote_info.round
-    if _valid_signatures_make_vote(b, last_tc) and _safe_to_vote(b.round, qc_round, last_tc):
-        _update_highest_qc_round(b.round)
-        _increase_highest_vote_round(b.round)
+    print('>>>>>>>>>>>>>>>>>In function: Safety.make_vote<<<<<<<<<<<<<<<<<<<<<<')
+    if b.qc is None:
+        qc_round = -1
+    else:
+        qc_round = b.qc.vote_info.rnd
+    if _valid_signatures_make_vote(b, last_tc) and _safe_to_vote(b.rnd, qc_round, last_tc):
+        print(f'\033[1;32m >>>>>>>>>>>>>>>Going to Make Updates<<<<<<<<<<<<<<<<<<<\033[1;37m')
+        _update_highest_qc_round(b.rnd)
+        _increase_highest_vote_round(b.rnd)
 
         exec_state_id = Ledger.pending_state(b.id)
-        vote_info = BlockTree.VoteInfo(id=b.id, round=b.round, parent_id=b.qc_vote_info.id, parent_round=qc_round,
+        p_id = 0
+        if b.qc is None:
+            p_id = -1
+        else:
+            p_id = b.qc.vote_info.id
+
+        vote_info = BlockTree.VoteInfo(id=b.id, rnd=b.rnd, parent_id=p_id, parent_round=qc_round,
                                        exec_state_id=exec_state_id)
 
-        vote_info_hash = nacl.hash.sha256((str(b.id) + str(b.round) + "-" +
-                                           str(b.qc_vote_info.id) + str(qc_round) + "-" + exec_state_id).encode(),
-                                          nacl.encoding.HexEncoder)
+        vote_info_hash = nacl.hash.sha256((str(b.id)+str(b.rnd)+str(p_id)+str(qc_round)+str(exec_state_id)).encode(), nacl.encoding.HexEncoder)
 
-        ledger_commit_info = BlockTree.LedgerCommitInfo(commit_state_id=_commit_state_id_candidate(
-            b.round, b.qc), vote_info_hash=vote_info_hash)
+        print(f'\033[1;32m >>>>>>>>>>>>>>>Going to create LedgerCommitInfo now<<<<<<<<<<<<<<<<<<<\033[1;37m')
 
+        ledger_commit_info = BlockTree.LedgerCommitInfo(commit_state_id=_commit_state_id_candidate(b.rnd, b.qc), vote_info_hash=vote_info_hash)
+
+        print('\033[1;33m >>>>>>>>>>>>>>>>>Exiting: Safety.make_vote with return<<<<<<<<<<<<<<<<<<<<<< \033[1;37m')
         return BlockTree.VoteMsg(vote_info, ledger_commit_info, BlockTree.high_commit_qc)
     else:
+        print('>>>>>>>>>>>>>>>>>Exiting: Safety.make_vote with None<<<<<<<<<<<<<<<<<<<<<<')
         return None
 
 
-def make_timeout(round, high_qc, last_tc):
+def make_timeout(rnd, high_qc, last_tc):
     # Make a TimeoutInfo after a local timeout
 
     global _validator_id, _private_key
-    qc_round = high_qc.vote_info.round
-    if _valid_signatures(high_qc, last_tc) and _safe_to_timeout(round, qc_round, last_tc):
-        _increase_highest_vote_round(round)  # stop voting for round
+    qc_round = high_qc.vote_info.rnd
+    if _valid_signatures(high_qc, last_tc) and _safe_to_timeout(rnd, qc_round, last_tc):
+        _increase_highest_vote_round(rnd)  # stop voting for round
         if _private_key == None:  # make sure you have a private key to perform signature
             print("No private key given.")
             return None
         else:
-            signature = _private_key.sign((round, high_qc.round))
-        return BlockTree.TimeoutInfo(round, high_qc, _validator_id, signature)
+            signature = _private_key.sign((rnd, high_qc.round))
+        return BlockTree.TimeoutInfo(rnd, high_qc, _validator_id, signature)
     else:
         return None

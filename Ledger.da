@@ -2,13 +2,11 @@ import nacl.encoding
 import nacl.hash
 import BlockTree
 import Safety
+import MemPool
 from collections import deque
 
 
 u = Safety.validator_id
-filename = "database" + str(u) + ".txt"
-f = open(filename, "w+")
-f.close()
 commits = {}
 q_size = 4  # no of committed blocks remembered
 commit_queue = deque()  # stores the last q_size committed blocks
@@ -25,33 +23,48 @@ state_id = {}  # description below:
 
 
 def speculate(prev_block_id, block_id, txns):
-    print("In function: Ledger.speculate")
-    if BlockTree.pending_block_tree[1].root is prev_block_id:
-        state_id[block_id] = nacl.hash.sha256([state_id[prev_block_id], txns],
-                                              encoder=nacl.encoding.HexEncoder)
+    global state_id
+    print(">>>>>>>>>>>>>>>>>>>>>>>In function: Ledger.speculate<<<<<<<<<<<<<<<<<<<<<<<")
+    #BlockTree.print_pending_block_tree()
+    if prev_block_id is -1: #For the genesis condition
+        state_id[block_id] = nacl.hash.sha256(str([0, 0]).encode(), nacl.encoding.HexEncoder)
+    elif BlockTree.pending_block_tree.tree[-1].root is prev_block_id:
+        state_id[block_id] = nacl.hash.sha256((str(state_id[prev_block_id]) + str(txns)).encode(), nacl.encoding.HexEncoder)
     else:
         print("Inconsistency in validator {u}")
+    print('>>>>>>>>>>>>>>>>>>>>>>Exit: Ledger.speculate<<<<<<<<<<<<<<<<<<<<<<<<<<<')
 
 
 def commit(block_id):
-    print("In function: Ledger.commit")
+    print(">>>>>>>>>>>>>>>>In function: Ledger.commit<<<<<<<<<<<<<<<<<<<")
     # if block_id in BlockTree.pending_block_tree.blocks:
-    bl = BlockTree.pending_block_tree[0].blocks[block_id]
-    f = open(filename, "a")
-    f.append(bl.payload)
-    f.close()
+    global commits, commit_queue
+    BlockTree.print_pending_block_tree()
+    bl = BlockTree.pending_block_tree.tree[0].blocks[block_id]
+    filename = 'Database'+str(Safety.validator_id)+'.txt'
     commits[block_id] = bl
-    deque.append(bl)
-    print("Committed block {block_id}")
+    commit_queue.append(bl)
+    print(f"[Val{Safety.validator_id}]\033[1;33m Committed block {block_id} with transactions {bl.payload}\033[1;37m")
+    if bl.payload not in ['Hello', 'Hi', 'Exit', '']:
+        f = open(filename, "a")
+        print(f'\033[1;33m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] Writing {bl.payload} to {filename}\033[1;37m')
+        f.write(bl.payload+'\n')
+        f.close()
+        MemPool.send_reply(bl.payload)
     if len(commit_queue) > q_size:
-        commits.pop(commits[commit_queue[0]])
-        commit_queue.pop_left()
+        commits.pop(commit_queue[0].id)
+        commit_queue.popleft()
+    print('>>>>>>>>>>>>>>>>>>>>>Exit: Ledger.commit<<<<<<<<<<<<<<<<<<<<<')
     return state_id
 
 
 def committed_block(block_id):
-    return commits[block_id]
+    global commit
+    print(f'[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] Returning {commits.get(block_id, None)} from committed_block')
+    return commits.get(block_id, None)
 
 
 def pending_state(block_id):
-    return state_id[block_id]
+    global state_id
+    print(f'[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] Returning {state_id.get(block_id, None)} from pending_state')
+    return state_id.get(block_id, None)

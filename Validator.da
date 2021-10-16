@@ -1,6 +1,8 @@
 # change definition of send messages everywhere
 import sys
+import time
 import BlockTree
+from Client import *
 import LeaderElection
 import Safety
 import MemPool
@@ -10,43 +12,65 @@ config(channel='fifo', clock='Lamport')
 
 
 class Validator(process):
-    def setup(validators: set, exit_cnt: int, config):
+    def setup(validators: set, exit_cnt: int, clients: set, config):
         print("Setting up validator")
-        # Safety.set_private_key(config['private_key'])
+        Safety.set_private_key(config['private_key'])
         Safety.set_public_keys(config['public_keys'])
         # Safety.set_validator_id(config['validator_id'])
         Safety.validator_id = config['validator_id']
         Safety.set_f(config['f'])
         Safety.validators = config['validators']
+        Safety.node_map = config['node_map']
+        Safety.rev_node_map = config['rev_node_map']
+        print(f'Validators updated to {Safety.validators}')
         BlockTree.f = config['f']
+        MemPool.clients = clients
+        MemPool.add_request(config['req1'])
+        MemPool.add_request(config['req2'])
+        MemPool.send_message = send_message
+    
+    #def create_initial_block():
+
 
     # sends a message to another validator
     def send_message(msg_type, msg_object, recipient):
-        send((msg_type, msg_object, self), to=recipient)
+        print(f'\033[1;31m [Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] Sending reply to {recipient}\033[1;37m')
+        send((msg_type, msg_object), to=recipient)
 
     def process_certificate_qc(qc):
-        print('In function: process_certificate_qc')
+        print(f'[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] In function: process_certificate_qc')
         BlockTree.process_qc(qc)
         LeaderElection.update_leaders(qc)
-        PaceMaker.advance_round(qc.vote_info.rnd)
+        PaceMaker.advance_round_qc(qc)
 
     def process_proposal_msg(P, sender):
-        print('In function: process_proposal_msg')
+        print(f'\033[1;33m [Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] In function: process_proposal_msg \033[1;37m')
         process_certificate_qc(P.block.qc)
         process_certificate_qc(P.high_commit_qc)
+        #print(f'\033[1;33m [Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] Completed half \033[1;33m')
         PaceMaker.advance_round_tc(P.last_round_tc)
         current_round = PaceMaker.current_round
         leader = LeaderElection.get_leader(current_round)
-        if (P.block.round is not current_round) or (sender is not leader) or (bl.author is not leader):
+        #remove duplicate transactions from local MemPool
+        #print(f'\032[1;33m [Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] Clear till here \033[1;37m')
+        #print(f'\032[1;33m [Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] Request Buffer size is {len(MemPool._request_pool)} \033[1;37m')
+        print(f'\033[1;33m [Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] Checking to Delete {MemPool._request_pool[0].cmd, P.block.payload} \033[1;37m')
+        if MemPool._request_pool[0].cmd == P.block.payload:
+            print(f'\033[1;33m [Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]Removing {MemPool.get_transactions()} from MemPool \033[1;37m')
+        print(f'A{P.block.rnd, current_round}')
+        print(f'B{sender, leader}')
+        print(f'C{P.block.author, leader}')
+        if (P.block.rnd is not current_round) or (sender is not leader) or (P.block.author is not leader):
+            print('\033[1;33m Error: Returning \033[1;37m')
             return
-        BlockTree.execute_and_insert(block)
-        vote_msg = Safety.make_vote(block, last_round_tc)
-        if vote_msg is None:
-            send(("VoteMsg", vote_msg, self),
-                 to=LeaderElection.get_leader(rnd + 1))
+        BlockTree.execute_and_insert(P.block)
+        vote_msg = Safety.make_vote(P.block, P.last_round_tc)
+        print(f'~~~~~~~~~~~~Val {Safety.validator_id, Safety.node_map[Safety.validator_id], P.block.rnd, current_round, PaceMaker.current_round, vote_msg.ledger_commit_info.commit_state_id}~~~~~~~~~~~~~~~')
+        if vote_msg is not None:
+            send(("VoteMsg", vote_msg, Safety.validator_id), to=Safety.node_map[LeaderElection.get_leader(P.block.rnd + 1)])
 
     def process_timeout_msg(M):
-        print('In function: process_timeout_msg')
+        print(f'[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]In function: process_timeout_msg')
         process_certificate_qc(M.tmo_info.high_qc)
         process_certificate_qc(M.high_commit_qc)
         PaceMaker.advance_round_tc(M.last_round_tc)
@@ -56,23 +80,37 @@ class Validator(process):
             process_new_round_event(tc)
 
     def process_vote_msg(M):
-        print('In function: process_vote_msg')
+        print(f'[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] In function: process_vote_msg')
         qc = BlockTree.process_vote(M)
         if qc is not None:
             process_certificate_qc(qc)
             process_new_round_event(None)
 
     def process_new_round_event(last_tc):
-        print('In function: process_new_round_event')
-        if u is LeaderElection.get_leader(PaceMaker.current_round):
-            b = BlockTree.generate_block(
-                MemPool.get_transactions(), PaceMaker.current_round)
-            if (b.payload == "Exit"):
+        print(f'\033[1;33m [Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] In function: process_new_round_event \033[1;37m')
+        print('Waiting for transactions')
+        #await(some(c in MemPool.clients, has= received(('Request', req), c))))
+        time.sleep(2)
+        -- handle_receive_requests
+        #print(f'\033[1;33m Val ID {Safety.validator_id} leader is {LeaderElection.get_leader(PaceMaker.current_round)}\033[1;37m')
+        if Safety.validator_id is LeaderElection.get_leader(PaceMaker.current_round):
+            b = BlockTree.generate_block(MemPool.get_transactions(), PaceMaker.current_round)
+            #if there are no more transactions from the client, add two rounds of NULL transactions
+            #next time when you find None, you exit
+            if len(MemPool._request_pool) is 0:
                 exit_cnt += 1
-            if exit_cnt is 3:
-                sys.exit("No more requests from client")
+                req = Request("", "", 0, 0)
+                MemPool.add_request(req)
+                MemPool.add_request(req)
+                send(("Request", req, self), to=validators)
+                send(("Request", req, self), to=validators)
+                time.sleep(2)
+
+            if b.payload is 'Exit': #number of clients
+                sys.exit("\033[1;33m No more requests from client \033[1;37m")
             P = BlockTree.ProposalMsg(b, last_tc, BlockTree.high_commit_qc)
-            send(("ProposalMsg", P, self), to=validators)
+            print(f'\033[1;33m Broadcasting proposal message of size {sys.getsizeof(P)} \033[1;37m')
+            send(("ProposalMsg", P, Safety.validator_id), to=Safety.validators)
 
     def receive(msg=("ProposalMsg", P, sender)):
         process_proposal_msg(P, sender)
@@ -86,15 +124,18 @@ class Validator(process):
     def receive(msg=("LocalTimeout", M, sender)):
         PaceMaker.local_timeout_round()
 
-    def receive(msg=('Request', req), from_=p):
-        print(
-            f"Received request from client:{p}.")
+    def receive(msg=("Request", req, p)):
+        print(f"Received request from client:{p}.")
         MemPool.add_request(req)
 
     def run():
-        op = 'Starting Node ' + Safety.validator_id
+        op = 'Starting Node ' + str(Safety.validator_id)
         print(op)
-        await(exit_cnt >= 3)
+        print('Will handle received requests now')
+        time.sleep(2)
+        -- receive_requests_from_client
+        process_new_round_event(None)
+        await(exit_cnt >= 5)
 
         # while exit_cnt < 3:
         #    continue

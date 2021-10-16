@@ -1,0 +1,56 @@
+from Client import *
+from Validator import Validator
+from nacl.signing import SigningKey
+from nacl.signing import VerifyKey
+
+def main():
+    #create validator
+    print('Creating validators')
+    config = {}
+    validators = new(Validator, num=4)
+    num_client = 1
+    print('Creating Clients')
+    clients = new(Client, num=num_client)
+    public_keys = []
+    private_keys = []
+    for i in range(0, 4):
+        private_keys.append(SigningKey.generate())
+        public_keys.append(private_keys[-1].verify_key)
+    node_map = {}
+    rev_node_map = {}
+    for i,p in enumerate(validators):
+        node_map[i] = p
+        rev_node_map[p] = i
+    for i in node_map:
+        config['public_keys'] = public_keys
+        config['private_key'] = private_keys[i]
+        config['validator_id'] = i
+        config['f'] = 1
+        config['validators'] = validators
+        config['node_map'] = node_map
+        config['rev_node_map'] = rev_node_map
+        config['clients'] = clients
+        config['req1'] = Request("", "Hello", 0, 0)
+        config['req2'] = Request("", "Hi", 0, 0)
+        setup(node_map[i], (validators-{node_map[i]}, 0, clients, config))
+        print(f"Validator {i} created")
+
+    #create client
+    print('Setting up clients')
+    config = {}
+    public_keys = []
+    private_keys = []
+    for i in range(0, num_client):
+        private_keys.append(SigningKey.generate())
+        public_keys.append(private_keys[-1].verify_key)
+    for i,p in enumerate(clients):
+        config['private_key'] = private_keys[i]
+        config['validators'] = validators
+        config['f'] = 1
+        config['timeout'] = 20
+        config['workload'] = Workload(5, 1, 20)
+        setup(p, (config, ))
+        output("Clients created")
+    
+    start(validators)
+    start(clients)

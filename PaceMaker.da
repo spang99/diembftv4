@@ -86,9 +86,12 @@ def save_consensus_state():
 def advance_round_qc(qc):
     global current_round, last_round_tc
     print("In function: PaceMaker.advance_round_qc")
-    if qc.vote_info.round < current_round:
+    if qc is None:
+        return True
+    if qc.vote_info.rnd < current_round:
         return False
     last_round_tc = None
+    start_timer(qc.vote_info.rnd+1)
     return True
 
 

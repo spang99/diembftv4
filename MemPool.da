@@ -1,23 +1,28 @@
 import queue
-import Client
+from Client import *
 from collections import deque
-import Validator
 
 # pool of submitted but not yet executed requests/transactions
-_request_pool = queue.Queue()
+_request_pool = deque()
+send_message = None
+
+#stores prcoess ids of clients
+clients = None
 
 # cache of recently executed requests/transactions replies
 _cached_results = []
+_pending_requests = {}
 
 
 def get_transactions():
     # called get_transactions to follow psuedocode, but really get_requests
     # if no pending requests, returns None.
-    try:
-        req = _request_pool.get_nowait()
-        return req
-    except queue.Empty:
-        return None
+        if len(_request_pool) is 0:
+            print(f"\033[1;30m QueueEmpty \033[1;37m")
+            return None
+        print(f'\033[1;30m Sending Mempool Request {_request_pool[0].cmd}, queue size now {len(_request_pool)}\033[1;37m')
+        _pending_requests[_request_pool[0].cmd] = _request_pool[0]
+        return _request_pool.popleft().cmd
 
 
 def add_request(req):
@@ -27,14 +32,14 @@ def add_request(req):
     for (cached_request_id, cached_result) in _cached_results:
         if cached_request_id == req.id:
             print("Sending a cached response.")
-            Validator.send_message(
+            send_message(
                 'reply', (req.id, cached_result), req.client)
             return
 
     # add request to _request_pool
-    print("Adding request to pool")
-    _request_pool.put(req)
-    print("Added to queue.")
+    print("\033[1;30m Adding request to pool\033[1;37m")
+    _request_pool.append(req)
+    print("\033[1;30m Added to queue. \033[1;37m")
 
 
 def _cache_reply(request, result):
@@ -43,10 +48,12 @@ def _cache_reply(request, result):
         if request.id == reqid:
             # already cached
             return
-    _cached_results.appendleft((request.id, result))
+    _cached_results.append((request.id, result))
 
 
-def send_reply(req):
-    result = "Your cmd: " + req.cmd + " was committed."
-    Validator.send_message('reply', (req.id, result), req.client)
+def send_reply(reply):
+    result = "Your cmd: " + reply + " was committed."
+    req = _pending_requests[reply]
+    print(f"Sending Reply to {req.client}")
+    send_message("reply", (req.id, result), req.client)
     _cache_reply(req, result)
