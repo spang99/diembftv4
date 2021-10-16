@@ -159,19 +159,18 @@ class Validator(process):
         output("Starting up...")
         self.process_new_round_event(None)  # jumpstart algorithm
         await(run_done and len(MemPool.pending_requests) == 0)
-        # while not run_done:
-        #    round_done = False
+        while not run_done:
+            round_done = False
 #       #     -- initial_messages
 #       #     if start_round:
         #    start_round = False  # wait for another start to restart rounds
-        #    timer_duration = PaceMaker.get_round_timer(
-        #        PaceMaker.current_round)
-        #    if await(round_done):
-        #        output(f"\t\ROUND DONE")
+            timer_duration = PaceMaker.get_round_timer(PaceMaker.current_round)
+            if await(round_done):
+                output(f"\t\ROUND DONE")
         #        pass
-        #    elif timeout(timer_duration):
-        #        M = PaceMaker.local_timeout_round()
-        #        send(("TimeoutMsg", M), to=validators.union({self}))
+            elif timeout(timer_duration):
+                M = PaceMaker.local_timeout_round()
+                send(("TimeoutMsg", M), to=validators.union({self}))
 
         # while exit_cnt < 3:
         #    continue
