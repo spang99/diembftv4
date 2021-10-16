@@ -16,14 +16,14 @@ class Block:
         self.payload = payload
         self.qc = qc
         self.id = id
-        print(f'{Safety.validator_id}: Created new Block class')
+        #print(f'{Safety.validator_id}: Created new Block class')
 
 
 class LedgerCommitInfo:
     def __init__(self, commit_state_id, vote_info_hash):
         self.commit_state_id = commit_state_id
         self.vote_info_hash = vote_info_hash
-        print(f'{Safety.validator_id}: Created new LedgerCommitInfo class.')
+        #print(f'{Safety.validator_id}: Created new LedgerCommitInfo class.')
 
 
 class ProposalMsg:
@@ -33,7 +33,7 @@ class ProposalMsg:
         self.high_commit_qc = high_commit_qc
         # signing_key expected in Safety module
         self.signature = Safety.get_private_key().sign(block.id.encode())
-        print(f'{Safety.validator_id}: Created new ProposalMsg class')
+        #print(f'{Safety.validator_id}: Created new ProposalMsg class')
 
 
 class QC:
@@ -50,10 +50,10 @@ class QC:
                 b''.join([signature for (signer, signature) in signatures]))
         else:
             self.author_signature = None
-        print(f'{Safety.validator_id}: Created new QC class')
+        #print(f'{Safety.validator_id}: Created new QC class')
 
     def signers(self):
-        print(f"{Safety.validator_id}: Inside function BlockTree.QC.signers.")
+        #print(f"{Safety.validator_id}: Inside function BlockTree.QC.signers.")
         # return signers of this QC (actual process, not just ID)
         try:
             qc_signers = [Safety.validator_map[val]
@@ -68,7 +68,7 @@ class TimeoutMsg:
         self.tmo_info = tmo_info
         self.last_round_tc = last_round_tc
         self.high_commit_qc = high_commit_qc
-        print(f'{Safety.validator_id}: Created new TimeoutMsg class')
+        #print(f'{Safety.validator_id}: Created new TimeoutMsg class')
 
 
 class TC:
@@ -76,7 +76,7 @@ class TC:
         self.round = round
         self.tmo_high_qc_rounds = tmo_high_qc_rounds
         self.tmo_signatures = tmo_signatures
-        print(f'{Safety.validator_id}: Created new TC class')
+        #print(f'{Safety.validator_id}: Created new TC class')
 
 
 class TimeoutInfo:
@@ -86,7 +86,7 @@ class TimeoutInfo:
         self.sender = sender
         # signing_key expected in Safety module
         self.signature = Safety.get_private_key().sign((round, high_qc.vote_info.round))
-        print(f'{Safety.validator_id}: Created new TimeoutInfo class')
+        #print(f'{Safety.validator_id}: Created new TimeoutInfo class')
 
 
 class VoteInfo:
@@ -96,7 +96,7 @@ class VoteInfo:
         self.parent_id = parent_id
         self.parent_round = parent_round
         self.exec_state_id = exec_state_id
-        print(f'{Safety.validator_id}: Created new VoteInfo class')
+        #print(f'{Safety.validator_id}: Created new VoteInfo class')
 
 
 class VoteMsg:
@@ -112,7 +112,7 @@ class VoteMsg:
         else:
             self.signature = Safety.get_private_key().sign(
                 (ledger_commit_info.vote_info_hash).encode())
-        print(f'{Safety.validator_id}: Created new VoteMsg class')
+        #print(f'{Safety.validator_id}: Created new VoteMsg class')
 
 
 high_commit_qc = None
@@ -148,7 +148,7 @@ def setup_BlockTree():
 
 def process_qc(qc):
     global pending_block_tree, high_commit_qc, high_qc
-    print(f'{Safety.validator_id}: In function: process_qc.')
+    #print(f'{Safety.validator_id}: In function: process_qc.')
     committed_request = None
     # If received genesis QC and round is 0, return because genesis QC is already highqc and has no info
     if qc.vote_info.round == 0 and PaceMaker.current_round == 1:
@@ -187,13 +187,13 @@ def process_qc(qc):
 
 def execute_and_insert(b):
     global pending_block_tree
-    print(f'{Safety.validator_id}: In function: execute_and_insert.')
+    #print(f'{Safety.validator_id}: In function: execute_and_insert.')
     Ledger.speculate(b.qc.vote_info.id, b.id, b.payload)
     pending_block_tree[b.id] = b
 
 
 def verify_signature(v):
-    #print(f"{Safety.validator_id}: Inside BlockTree.verify_signature")
+    ##print(f"{Safety.validator_id}: Inside BlockTree.verify_signature")
     verify_key = Safety.get_public_key(v.sender)
     if verify_key == None:
         return False
@@ -207,7 +207,7 @@ def verify_signature(v):
 
 def process_vote(v):  # v is of type VoteMsg
     global pending_votes, f
-    print(f'{Safety.validator_id}: In function: process_vote')
+    #print(f'{Safety.validator_id}: In function: process_vote')
     if v.high_commit_qc != None:
         process_qc(v.high_commit_qc)
     commit_state_id = v.ledger_commit_info.commit_state_id
@@ -223,14 +223,14 @@ def process_vote(v):  # v is of type VoteMsg
             #print("Making QC")
             qc = QC(v.vote_info, v.ledger_commit_info, pending_votes[vote_idx],
                     Safety.validator_id)
-            print(f'{Safety.validator_id}: Created quorum certificate')
+            #print(f'{Safety.validator_id}: Created quorum certificate')
             return qc
     return None
 
 
 def generate_block(txns, current_round):
     global high_commit_qc, high_qc
-    print(f'{Safety.validator_id}: In function: generate_block')
+    #print(f'{Safety.validator_id}: In function: generate_block')
     qc = high_qc
     segment_1 = nacl.hash.sha256(
         ((Safety.validator_id)+"-"+str(current_round)+"-"+txns+str(qc.vote_info.id)).encode())

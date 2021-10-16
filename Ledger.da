@@ -38,7 +38,7 @@ def setup_Ledger():
 
 def speculate(prev_block_id, block_id, txns):
     global state_id
-    print(f"{Safety.validator_id}: In function: Ledger.speculate.")
+    #print(f"{Safety.validator_id}: In function: Ledger.speculate.")
 
     # if BlockTree.pending_block_tree[1].root is prev_block_id:
     #    state_id[block_id] = nacl.hash.sha256([state_id[prev_block_id], txns],
@@ -52,7 +52,7 @@ def speculate(prev_block_id, block_id, txns):
 
 
 def commit(block_id):
-    print(f"{Safety.validator_id}: In function: Ledger.commit")
+    #print(f"{Safety.validator_id}: In function: Ledger.commit")
     # if block_id in BlockTree.pending_block_tree.blocks:
     #bl = BlockTree.pending_block_tree[0].blocks[block_id]
     #f = open(filename, "a")
@@ -67,7 +67,7 @@ def commit(block_id):
     # return state_id
 
     if block_id not in BlockTree.pending_block_tree:
-        print(f"{Safety.validator_id}: Invalid block id to commit")
+        #print(f"{Safety.validator_id}: Invalid block id to commit")
         return
     block = BlockTree.pending_block_tree[block_id]
     f = open(filename, 'a')

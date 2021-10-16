@@ -65,12 +65,12 @@ def _update_highest_qc_round(qc_round):
 
 
 def _consecutive(block_round, round):
-    print(f"{Safety.validator_id}: Inside Safety._consecutive.")
+    #print(f"{Safety.validator_id}: Inside Safety._consecutive.")
     return round + 1 == block_round
 
 
 def _safe_to_extend(block_round, qc_round, tc):
-    print(f"{Safety.validator_id}: Inside Safety._safe_to_extend")
+    #print(f"{Safety.validator_id}: Inside Safety._safe_to_extend")
     if tc == None:
         print("Discarding message: No TC")
         return False
@@ -78,7 +78,7 @@ def _safe_to_extend(block_round, qc_round, tc):
 
 
 def _safe_to_vote(block_round, qc_round, tc):
-    print(f"{Safety.validator_id}: Inside Safety._safe_to_vote. Block Round:{block_round},QC Round:{qc_round}")
+    #print(f"{Safety.validator_id}: Inside Safety._safe_to_vote. Block Round:{block_round},QC Round:{qc_round}")
 
     global highest_vote_round
     if block_round <= max(highest_vote_round, qc_round):
@@ -89,7 +89,7 @@ def _safe_to_vote(block_round, qc_round, tc):
 
 
 def _safe_to_timeout(round, qc_round, tc):
-    print(f"{Safety.validator_id}: Inside Safety_safe_to_timeout.")
+    #print(f"{Safety.validator_id}: Inside Safety_safe_to_timeout.")
     global highest_qc_round, highest_vote_round
     if (qc_round < highest_qc_round) or (round <= max(highest_vote_round - 1, qc_round)):
         # respect highest_qc_round and don't timeout in a past round
@@ -175,7 +175,7 @@ def _valid_signatures(qc, last_tc):
 def make_vote(b, last_tc):
     # b is the block to vote on
     # last_tc is the timeout certificate for the previous round, else ⊥
-    print(f"{Safety.validator_id}: Inside Safety.make_vote.")
+    #print(f"{Safety.validator_id}: Inside Safety.make_vote.")
 
     qc_round = b.qc.vote_info.round
     if _valid_signatures_make_vote(b, last_tc) and _safe_to_vote(b.round, qc_round, last_tc):

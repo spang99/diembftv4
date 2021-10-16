@@ -48,7 +48,7 @@ class Validator(process):
         if qc == None:
             output("Empty qc")
             return
-        output(f'In function: process_certificate_qc.')
+        #output(f'In function: process_certificate_qc.')
         committed_request = BlockTree.process_qc(qc)
         if committed_request:
             # send reply to the client
@@ -61,7 +61,7 @@ class Validator(process):
             start_round = True
 
     def process_proposal_msg(P, sender):
-        output('In function: process_proposal_msg.')
+        #output('In function: process_proposal_msg.')
         process_certificate_qc(P.block.qc)
         process_certificate_qc(P.high_commit_qc)
         if PaceMaker.advance_round_tc(P.last_round_tc):
@@ -87,7 +87,7 @@ class Validator(process):
             output(f"Empty vote message.")
 
     def process_timeout_msg(M):
-        output('In function: process_timeout_msg')
+        #output('In function: process_timeout_msg')
         process_certificate_qc(M.tmo_info.high_qc)
         process_certificate_qc(M.high_commit_qc)
         PaceMaker.advance_round_tc(M.last_round_tc)
@@ -100,14 +100,14 @@ class Validator(process):
             send(("TimeoutMsg", M), to=validators)
 
     def process_vote_msg(M):
-        output(f'In function: process_vote_msg.')
+        #output(f'In function: process_vote_msg.')
         qc = BlockTree.process_vote(M)
         if qc is not None:
             process_certificate_qc(qc)
             process_new_round_event(None)
 
     def process_new_round_event(last_tc):
-        output(f'In function: process_new_round_event.')
+        #output(f'In function: process_new_round_event.')
         current_round = PaceMaker.current_round
         leader = LeaderElection.get_leader(PaceMaker.current_round)
         output(f"The leader for round {current_round} is {leader}")
@@ -145,9 +145,12 @@ class Validator(process):
         PaceMaker.local_timeout_round()
 
     def receive(msg=('Request', req), from_=sender):
-        print(
-            f"Received request from client:{sender}.")
-        MemPool.add_request(req)
+        output(f"Received request from {sender}.")
+        Reply = MemPool.add_request(req)
+        if Reply:
+            # request already committed, send cached response
+            output("Request already committed, sending cached response.")
+            send(('Reply', Reply), to=req.client)
 
     def receive(msg=('RunDone',), from_=p):
         run_done = True

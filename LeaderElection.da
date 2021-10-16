@@ -20,7 +20,7 @@ def setup_LeaderElection():
 
 
 def elect_reputation_leader(qc):
-    print(f"{Safety.validator_id}: In function: LeaderElection.elect_reputation_leader")
+    #print(f"{Safety.validator_id}: In function: LeaderElection.elect_reputation_leader")
     global window_size, exclude_size
     active_validators = []
     last_authors = []
@@ -56,7 +56,7 @@ def elect_reputation_leader(qc):
 
 
 def update_leaders(qc):
-    print(f"{Safety.validator_id}: In function: LeaderElection.update_leaders.")
+    #print(f"{Safety.validator_id}: In function: LeaderElection.update_leaders.")
     # if round is 3 or less, don't call elect_reputation_leaders as you don't have enough
     # voting history to generate a leader
     current_round = PaceMaker.current_round
@@ -75,7 +75,7 @@ def update_leaders(qc):
 
 def get_leader(rnd):
     global validators, reputation_leaders
-    print(f"{Safety.validator_id}: In function: LeaderElection.get_leader")
+    #print(f"{Safety.validator_id}: In function: LeaderElection.get_leader")
     if rnd in reputation_leaders:
         return reputation_leaders[rnd]
     return validators[(rnd // 2) % len(validators)]

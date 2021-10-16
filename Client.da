@@ -58,12 +58,15 @@ class Client(process):
             replies[i] = []
             -- reply
             # limitation: doesn't make sure replies are from unique validators
-            if await(len(replies[i]) == 2 * f + 1):
-                output(f"{cmd} was committed.")
-                continue
-            elif timeout(timeout):
-                # retransmit request
-                output(f"retransmitting {cmd} due to timeout")
+            pending_request = True
+            while pending_request:
+                if await(len(replies[i]) == 2 * f + 1):
+                    output(f"{cmd} was committed.")
+                    pending_request = False
+                elif timeout(timeout):
+                    # retransmit request
+                    output(f"retransmitting {cmd} due to timeout")
+                    send(('Request', req), to=validators)
 
         output(f"\t\t\t\t\t\t\t\tFinished workload and exiting")
         # in main, you can use await(each(c in clients, has=received(('finished_workload',), from_=c)))
