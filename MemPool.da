@@ -17,7 +17,6 @@ pending_requests = set()
 
 
 progress_pending_cmd = False
-validator_object = None
 
 
 def get_transactions():
@@ -72,14 +71,3 @@ def cache_reply(cmd, result):
             # already cached
             return
     _cached_results.append((cmd, result))
-
-
-def send_reply(cmd):
-    # Remove req from pending pool **
-
-    result = "Your cmd: " + cmd + " was committed."
-    # parse the client and sequence number from the command, and lookup the client in the dictionary
-    client_str = cmd.split('-')[0]
-    reqid = int(cmd.split('-')[1])
-    # validator_object.send_message('reply', (reqid, result), clients[client_str])
-    cache_reply(cmd, result)

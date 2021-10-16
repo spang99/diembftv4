@@ -10,9 +10,6 @@ import Ledger
 config(channel='fifo', clock='Lamport')
 
 
-validator_object = None
-
-
 class Validator(process):
     def setup(validators: set, exit_cnt: int, config):
         output("Setting up validator")
@@ -26,7 +23,6 @@ class Validator(process):
         BlockTree.setup_BlockTree()  # Must be called after Safety is setup
         Ledger.setup_Ledger()  # Must be called after Safety is setup
         MemPool.clients = config['client_map']
-        MemPool.validator_object = self
         self.run_done = False
         self.start_round = True
 
@@ -68,7 +64,6 @@ class Validator(process):
             start_round = True
         current_round = PaceMaker.current_round
         leader = LeaderElection.get_leader(current_round)
-        print(P.block.round, current_round)
         if (P.block.round != current_round) or (sender != leader) or (P.block.author != str(leader)):
             output("Error here")
             print(P.block.round, current_round, str(leader),
@@ -112,9 +107,6 @@ class Validator(process):
         leader = LeaderElection.get_leader(PaceMaker.current_round)
         output(f"The leader for round {current_round} is {leader}")
         if self == leader:
-            if PaceMaker.current_round == 0:
-                # Bootstrapping leader to begin algorithm
-                PaceMaker.current_round = 1
             # if no pending transactions, don't propose empty blocks, but rather wait for requests to come in
             if len(MemPool.pending_requests) == 0:
                 # No pending requests (pending = submitted but not yet proposed or committed)
@@ -161,7 +153,6 @@ class Validator(process):
         await(run_done and len(MemPool.pending_requests) == 0)
         while not run_done:
             round_done = False
-#       #     -- initial_messages
 #       #     if start_round:
         #    start_round = False  # wait for another start to restart rounds
             timer_duration = PaceMaker.get_round_timer(PaceMaker.current_round)
@@ -171,6 +162,3 @@ class Validator(process):
             elif timeout(timer_duration):
                 M = PaceMaker.local_timeout_round()
                 send(("TimeoutMsg", M), to=validators.union({self}))
-
-        # while exit_cnt < 3:
-        #    continue

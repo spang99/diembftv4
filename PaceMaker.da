@@ -4,15 +4,11 @@ import Safety
 import Validator
 from collections import defaultdict
 
-#current_round = 0
+
 current_round = 1
 last_round_tc = None
 pending_timeouts = defaultdict(list)
 delta = 1
-
-
-# time_started = 0
-# time_stopped = 0
 
 
 def get_round_timer(r):
@@ -106,10 +102,3 @@ def advance_round_qc(qc):
     last_round_tc = None
     start_timer(qc.vote_info.round + 1)
     return True
-
-
-def broadcast(msg):
-    #print(f"{Safety.validator_id}: In function: PaceMaker.broadcast")
-    # send a timeoutMsg to all other validators
-    # for validator in LeaderElection.validators:
-    Validator.send_message('TimeoutMsg', msg, Validator.validators)
