@@ -124,7 +124,10 @@ class Validator(process):
                 output(
                     "Waiting for requests/transactions to be submitted by clients...")
                 - - wait_for_requests
-                await(len(MemPool.pending_requests) > 0 or MemPool.progress_pending_cmd)
+                await(len(MemPool.pending_requests) > 0 or MemPool.progress_pending_cmd or run_done)
+            if run_done:
+                output("Exiting")
+                return
             MemPool.progress_pending_cmd = False
             # print(f"\tGenerating proposal block. {str(self)}")
             b = BlockTree.generate_block(
@@ -161,14 +164,19 @@ class Validator(process):
         output("Starting up...")
         self.process_new_round_event(None)  # jumpstart algorithm
         # await(run_done and len(MemPool.pending_requests) == 0)
-        await(run_done)
-        while not round_start:
-            pass
-        round_start = False
-        timer_duration = PaceMaker.get_round_timer(PaceMaker.current_round)
-        if await(round_stop):
-            output(f"\tROUND DONE")
-            # pass
-        elif timeout(timer_duration):
-            M = PaceMaker.local_timeout_round()
-            send(("TimeoutMsg", M), to=validators.union({self}))
+        while (not run_done):
+            while not round_start:
+                -- process_messages_while_waiting_to_start_round
+                if run_done:
+                    break
+                pass
+            round_start = False
+            timer_duration = PaceMaker.get_round_timer(PaceMaker.current_round)
+            if await(round_stop):
+                output(f"\tROUND DONE")
+                # pass
+            elif timeout(timer_duration):
+                M = PaceMaker.local_timeout_round()
+                send(("TimeoutMsg", M), to=validators.union({self}))
+
+        output("Exiting")
