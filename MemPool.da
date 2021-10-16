@@ -16,7 +16,7 @@ _cached_results = []
 pending_requests = set()
 
 
-still_send = False
+progress_pending_cmd = False
 validator_object = None
 
 

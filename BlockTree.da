@@ -152,8 +152,6 @@ def process_qc(qc):
 
     # If received genesis QC and round is 0, return because genesis QC is already highqc and has no info
     if qc.vote_info.round == 0 and PaceMaker.current_round == 1:
-        #print("high_qc", high_qc.vote_info.id, high_qc.vote_info.round)
-        #print("qc", qc.vote_info.id, qc.vote_info.round)
         return
 
     if qc.ledger_commit_info.commit_state_id and (qc.vote_info.parent_id not in Ledger.commits):
@@ -164,13 +162,14 @@ def process_qc(qc):
             # remove pending request from mempool
             MemPool.pending_requests.remove(
                 pending_block_tree[qc.vote_info.parent_id].payload)
-            print(
-                f"\t\t\t\t\tHere's the Deal. current_round:{PaceMaker.current_round}")
             if Safety.validator_id == str(LeaderElection.get_leader(PaceMaker.current_round+1)) and len(MemPool.pending_requests) == 0:
-                MemPool.still_send = True
+                # Since this may empty the pending requests pool, leader may not propose an empty block to allow other
+                # validators who don't have this qc to commit the commit_state_id. This variable ensures other validators
+                # get the qc
+                MemPool.progress_pending_cmd = True
         except:
-            print(
-                f"\t\t\t\t\tHEEEEE\n\t\t\t\tpayload:{pending_block_tree[qc.vote_info.parent_id].payload},pending:{MemPool.pending_requests}. {Safety.validator_id}")
+            #print(f"{Safety.validator_id}: payload:{pending_block_tree[qc.vote_info.parent_id].payload},pending:{MemPool.pending_requests}. {Safety.validator_id}")
+            pass
 
         # send reply to client
         # MemPool.send_reply(pending_block_tree[qc.vote_info.parent_id].payload)

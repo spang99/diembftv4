@@ -102,7 +102,6 @@ class Validator(process):
             if PaceMaker.current_round == 0:
                 # Bootstrapping leader to begin algorithm
                 PaceMaker.current_round = 1
-            # print(f"\t\t\t\t\t\tI, {self}, am the leader for this round. Stillsend: {MemPool.still_send}")
             # if no pending transactions, don't propose empty blocks, but rather wait for requests to come in
             if len(MemPool.pending_requests) == 0:
                 # No pending requests (pending = submitted but not yet proposed or committed)
@@ -110,8 +109,8 @@ class Validator(process):
                 output(
                     "Waiting for requests/transactions to be submitted by clients...")
                 - - wait_for_requests
-                await(len(MemPool.pending_requests) > 0 or MemPool.still_send)
-            MemPool.still_send = False
+                await(len(MemPool.pending_requests) > 0 or MemPool.progress_pending_cmd)
+            MemPool.progress_pending_cmd = False
             # print(f"\tGenerating proposal block. {str(self)}")
             b = BlockTree.generate_block(
                 MemPool.get_transactions(), PaceMaker.current_round)

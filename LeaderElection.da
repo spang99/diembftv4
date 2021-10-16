@@ -40,20 +40,18 @@ def elect_reputation_leader(qc):
         current_qc = current_block.qc
         # backslash means complement set, make sure both are sets
         #active_validators -= last_authors
-        print(
-            f"\t\t\tactive:{active_validators},authors:{last_authors}. {Safety.validator_id}")
+        #print(f"{Safety.validator_id}: active:{active_validators},authors:{last_authors}. {Safety.validator_id}")
         for author in last_authors:
             try:
                 active_validators.remove(author)
                 # last_authors.remove(author)
             except:
-                print(f"\t\t\tError removing. {Safety.validator_id}")
+                #print(f"Error removing. {Safety.validator_id}")
+                pass  # this exception will happen when you try to remove an author you already removed
         i += 1
     random.seed(qc.vote_info.round)
     # return active_validators.random.choice()
     index = random.randint(0, len(active_validators)-1)
-    print(
-        f"\t\t\t\tYOOO {len(active_validators)},index:{index}. {Safety.validator_id}")
     return active_validators[index]
 
 
@@ -73,7 +71,6 @@ def update_leaders(qc):
         return
     if (extended_round + 1 == qc_round) and (qc_round + 1 == current_round):
         reputation_leaders[current_round + 1] = elect_reputation_leader(qc)
-        print(f"\t\t\t\tOk dog {Safety.validator_id}")
 
 
 def get_leader(rnd):
