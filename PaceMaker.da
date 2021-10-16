@@ -22,7 +22,7 @@ def start_timer(new_round):
     global current_round
     stop_timer(current_round)
     current_round = new_round
-    print(f"{Safety.validator_id}: Timer started for round: {current_round}")
+    #print(f"{Safety.validator_id}: Timer started for round: {current_round}")
     # start local timer for round current round for duration get round timer(current round)
     # time_started = time.perf_counter()
 

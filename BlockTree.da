@@ -156,7 +156,8 @@ def process_qc(qc):
 
     if qc.ledger_commit_info.commit_state_id and (qc.vote_info.parent_id not in Ledger.commits):
         # included additional check to prevent committing an already committed block
-        print(f"{Safety.validator_id}: Commiting block id,round: {qc.vote_info.parent_id,qc.vote_info.parent_round}")
+        print(
+            f"{Safety.validator_id}: Committing block cmd,round: {pending_block_tree[qc.vote_info.parent_id].payload,qc.vote_info.parent_round}")
         committed_request = Ledger.commit(qc.vote_info.parent_id)
         try:
             # remove pending request from mempool
