@@ -24,7 +24,8 @@ class Validator(process):
         Ledger.setup_Ledger()  # Must be called after Safety is setup
         MemPool.clients = config['client_map']
         self.run_done = False
-        self.start_round = True
+        self.round_start = False
+        self.round_stop = False
 
     # sends a message to another validator
 
@@ -44,24 +45,27 @@ class Validator(process):
         if qc == None:
             output("Empty qc")
             return
-        #output(f'In function: process_certificate_qc.')
+        # output(f'In function: process_certificate_qc.')
         committed_request = BlockTree.process_qc(qc)
         if committed_request:
             # send reply to the client
             send_reply(committed_request)
 
         LeaderElection.update_leaders(qc)
-        if PaceMaker.advance_round_qc(qc) and len(MemPool.pending_requests) > 0:
-            # start new round timer
-            round_done = True
-            start_round = True
+        if PaceMaker.advance_round_qc(qc):
+            round_stop = True
+            if len(MemPool.pending_requests) > 0:
+                # start new round timer
+                round_start = True
 
     def process_proposal_msg(P, sender):
-        #output('In function: process_proposal_msg.')
+        # output('In function: process_proposal_msg.')
         process_certificate_qc(P.block.qc)
         process_certificate_qc(P.high_commit_qc)
         if PaceMaker.advance_round_tc(P.last_round_tc):
-            start_round = True
+            round_stop = True
+            if len(MemPool.pending_requests) > 0:
+                round_start = True
         current_round = PaceMaker.current_round
         leader = LeaderElection.get_leader(current_round)
         if (P.block.round != current_round) or (sender != leader) or (P.block.author != str(leader)):
@@ -82,27 +86,33 @@ class Validator(process):
             output(f"Empty vote message.")
 
     def process_timeout_msg(M):
-        #output('In function: process_timeout_msg')
+        # output('In function: process_timeout_msg')
         process_certificate_qc(M.tmo_info.high_qc)
         process_certificate_qc(M.high_commit_qc)
-        PaceMaker.advance_round_tc(M.last_round_tc)
+        if PaceMaker.advance_round_tc(M.last_round_tc):
+            round_stop = True
+            if len(MemPool.pending_requests) > 0:
+                round_start = True
         tc, M = PaceMaker.process_remote_timeout(M)
         if tc:
-            PaceMaker.advance_round_tc(tc)
+            if PaceMaker.advance_round_tc(tc):
+                round_stop = True
+                if len(MemPool.pending_requests) > 0:
+                    round_start = True
             process_new_round_event(tc)
         elif M:
-            round_done = True
+            round_stop = True
             send(("TimeoutMsg", M), to=validators)
 
     def process_vote_msg(M):
-        #output(f'In function: process_vote_msg.')
+        # output(f'In function: process_vote_msg.')
         qc = BlockTree.process_vote(M)
         if qc is not None:
             process_certificate_qc(qc)
             process_new_round_event(None)
 
     def process_new_round_event(last_tc):
-        #output(f'In function: process_new_round_event.')
+        # output(f'In function: process_new_round_event.')
         current_round = PaceMaker.current_round
         leader = LeaderElection.get_leader(PaceMaker.current_round)
         output(f"The leader for round {current_round} is {leader}")
@@ -150,15 +160,15 @@ class Validator(process):
     def run():
         output("Starting up...")
         self.process_new_round_event(None)  # jumpstart algorithm
-        await(run_done and len(MemPool.pending_requests) == 0)
-        while not run_done:
-            round_done = False
-#       #     if start_round:
-        #    start_round = False  # wait for another start to restart rounds
-            timer_duration = PaceMaker.get_round_timer(PaceMaker.current_round)
-            if await(round_done):
-                output(f"\t\ROUND DONE")
-        #        pass
-            elif timeout(timer_duration):
-                M = PaceMaker.local_timeout_round()
-                send(("TimeoutMsg", M), to=validators.union({self}))
+        # await(run_done and len(MemPool.pending_requests) == 0)
+        await(run_done)
+        while not round_start:
+            pass
+        round_start = False
+        timer_duration = PaceMaker.get_round_timer(PaceMaker.current_round)
+        if await(round_stop):
+            output(f"\tROUND DONE")
+            # pass
+        elif timeout(timer_duration):
+            M = PaceMaker.local_timeout_round()
+            send(("TimeoutMsg", M), to=validators.union({self}))

@@ -57,7 +57,7 @@ def elect_reputation_leader(qc):
 
 def update_leaders(qc):
     #print(f"{Safety.validator_id}: In function: LeaderElection.update_leaders.")
-    # if round is 3 or less, don't call elect_reputation_leaders as you don't have enough
+    # if round is 4 or less, don't call elect_reputation_leaders as you don't have enough
     # voting history to generate a leader
     current_round = PaceMaker.current_round
     if PaceMaker.current_round <= 4:
