@@ -5,96 +5,158 @@ import LeaderElection
 import Safety
 import MemPool
 import PaceMaker
+import Ledger
 
 config(channel='fifo', clock='Lamport')
 
 
+validator_object = None
+
+
 class Validator(process):
     def setup(validators: set, exit_cnt: int, config):
-        print("Setting up validator")
-        # Safety.set_private_key(config['private_key'])
+        output("Setting up validator")
+        Safety.set_private_key(config['private_key'])
         Safety.set_public_keys(config['public_keys'])
-        # Safety.set_validator_id(config['validator_id'])
-        Safety.validator_id = config['validator_id']
-        Safety.set_f(config['f'])
+        Safety.validator_id = str(self)
+        Safety.f = (config['f'])
         Safety.validators = config['validators']
-        BlockTree.f = config['f']
+        Safety.validator_map = config['validator_map']
+        LeaderElection.setup_LeaderElection()   # Must be called after Safety is setup
+        BlockTree.setup_BlockTree()  # Must be called after Safety is setup
+        Ledger.setup_Ledger()  # Must be called after Safety is setup
+        MemPool.clients = config['client_map']
+        MemPool.validator_object = self
+        self.run_done = False
+        self.start_round = True
 
     # sends a message to another validator
+
     def send_message(msg_type, msg_object, recipient):
-        send((msg_type, msg_object, self), to=recipient)
+        send((msg_type, msg_object), to=recipient)
 
     def process_certificate_qc(qc):
-        print('In function: process_certificate_qc')
+        if qc == None:
+            output("Empty qc")
+            return
+        output(f'In function: process_certificate_qc.')
         BlockTree.process_qc(qc)
         LeaderElection.update_leaders(qc)
-        PaceMaker.advance_round(qc.vote_info.rnd)
+        if PaceMaker.advance_round_qc(qc) and len(MemPool.pending_requests) > 0:
+            # start new round timer
+            round_done = True
+            start_round = True
 
     def process_proposal_msg(P, sender):
-        print('In function: process_proposal_msg')
+        output('In function: process_proposal_msg.')
         process_certificate_qc(P.block.qc)
         process_certificate_qc(P.high_commit_qc)
-        PaceMaker.advance_round_tc(P.last_round_tc)
+        if PaceMaker.advance_round_tc(P.last_round_tc):
+            start_round = True
         current_round = PaceMaker.current_round
         leader = LeaderElection.get_leader(current_round)
-        if (P.block.round is not current_round) or (sender is not leader) or (bl.author is not leader):
+        print(P.block.round, current_round)
+        if (P.block.round != current_round) or (sender != leader) or (P.block.author != str(leader)):
+            output("Error here")
+            print(P.block.round, current_round, str(leader),
+                  str(sender), P.block.author, leader)
             return
-        BlockTree.execute_and_insert(block)
-        vote_msg = Safety.make_vote(block, last_round_tc)
-        if vote_msg is None:
-            send(("VoteMsg", vote_msg, self),
-                 to=LeaderElection.get_leader(rnd + 1))
+        BlockTree.execute_and_insert(P.block)
+        vote_msg = Safety.make_vote(P.block, P.last_round_tc)
+        # remove the request from your request pool so you don't propose it again
+        MemPool.remove_from_requests(P.block.payload)
+        if vote_msg != None:
+            output(
+                f"Sending vote to leader of round {current_round+1}: {LeaderElection.get_leader(current_round+1)}.")
+            send(("VoteMsg", vote_msg),
+                 to=LeaderElection.get_leader(current_round + 1))
+        else:
+            output(f"Empty vote message.")
 
     def process_timeout_msg(M):
-        print('In function: process_timeout_msg')
+        output('In function: process_timeout_msg')
         process_certificate_qc(M.tmo_info.high_qc)
         process_certificate_qc(M.high_commit_qc)
         PaceMaker.advance_round_tc(M.last_round_tc)
-        tc = PaceMaker.process_remote_timeout(M)
-        if tc is not None:
-            PaceMaker.advance_round(tc)
+        tc, M = PaceMaker.process_remote_timeout(M)
+        if tc:
+            PaceMaker.advance_round_tc(tc)
             process_new_round_event(tc)
+        elif M:
+            round_done = True
+            send(("TimeoutMsg", M), to=validators)
 
     def process_vote_msg(M):
-        print('In function: process_vote_msg')
+        output(f'In function: process_vote_msg.')
         qc = BlockTree.process_vote(M)
         if qc is not None:
             process_certificate_qc(qc)
             process_new_round_event(None)
 
     def process_new_round_event(last_tc):
-        print('In function: process_new_round_event')
-        if u is LeaderElection.get_leader(PaceMaker.current_round):
+        output(f'In function: process_new_round_event.')
+        current_round = PaceMaker.current_round
+        leader = LeaderElection.get_leader(PaceMaker.current_round)
+        output(f"The leader for round {current_round} is {leader}")
+        if self == leader:
+            if PaceMaker.current_round == 0:
+                # Bootstrapping leader to begin algorithm
+                PaceMaker.current_round = 1
+            # print(f"\t\t\t\t\t\tI, {self}, am the leader for this round. Stillsend: {MemPool.still_send}")
+            # if no pending transactions, don't propose empty blocks, but rather wait for requests to come in
+            if len(MemPool.pending_requests) == 0:
+                # No pending requests (pending = submitted but not yet proposed or committed)
+                # wait for requests to come in
+                output(
+                    "Waiting for requests/transactions to be submitted by clients...")
+                - - wait_for_requests
+                await(len(MemPool.pending_requests) > 0 or MemPool.still_send)
+            MemPool.still_send = False
+            # print(f"\tGenerating proposal block. {str(self)}")
             b = BlockTree.generate_block(
                 MemPool.get_transactions(), PaceMaker.current_round)
-            if (b.payload == "Exit"):
-                exit_cnt += 1
-            if exit_cnt is 3:
-                sys.exit("No more requests from client")
+            # print(f"\tProposal block: {b.author,b.round,b.qc}. {str(self)}")
             P = BlockTree.ProposalMsg(b, last_tc, BlockTree.high_commit_qc)
-            send(("ProposalMsg", P, self), to=validators)
+            # should send itself the proposal as well
+            send(("ProposalMsg", P), to=validators.union({self}))
 
-    def receive(msg=("ProposalMsg", P, sender)):
+    def receive(msg=("ProposalMsg", P), from_=sender):
         process_proposal_msg(P, sender)
 
-    def receive(msg=("TimeoutMsg", M, sender)):
+    def receive(msg=("TimeoutMsg", M), from_=sender):
         process_timeout_msg(M)
 
-    def receive(msg=("VoteMsg", M, sender)):
+    def receive(msg=("VoteMsg", M), from_=sender):
         process_vote_msg(M)
 
-    def receive(msg=("LocalTimeout", M, sender)):
+    def receive(msg=("LocalTimeout", M), from_=sender):
         PaceMaker.local_timeout_round()
 
-    def receive(msg=('Request', req), from_=p):
+    def receive(msg=('Request', req), from_=sender):
         print(
-            f"Received request from client:{p}.")
+            f"Received request from client:{sender}.")
         MemPool.add_request(req)
 
+    def receive(msg=('RunDone',), from_=p):
+        run_done = True
+
     def run():
-        op = 'Starting Node ' + Safety.validator_id
-        print(op)
-        await(exit_cnt >= 3)
+        output("Starting up...")
+        self.process_new_round_event(None)  # jumpstart algorithm
+        await(run_done and len(MemPool.pending_requests) == 0)
+        # while not run_done:
+        #    round_done = False
+#       #     -- initial_messages
+#       #     if start_round:
+        #    start_round = False  # wait for another start to restart rounds
+        #    timer_duration = PaceMaker.get_round_timer(
+        #        PaceMaker.current_round)
+        #    if await(round_done):
+        #        output(f"\t\ROUND DONE")
+        #        pass
+        #    elif timeout(timer_duration):
+        #        M = PaceMaker.local_timeout_round()
+        #        send(("TimeoutMsg", M), to=validators.union({self}))
 
         # while exit_cnt < 3:
         #    continue

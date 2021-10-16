@@ -5,18 +5,25 @@ import Validator
 import BlockTree
 import Safety
 
+validators = None
+window_size = None
+exclude_size = None
+reputation_leaders = {}
 
-validators = Safety.validators
-window_size = BlockTree.f
-exclude_size = BlockTree.f + 1
-reputation_leaders = []
+
+# Must be called after Safety is setup
+def setup_LeaderElection():
+    global validators, window_size, exclude_size
+    validators = Safety.validators
+    window_size = Safety.f
+    exclude_size = Safety.f + 1
 
 
 def elect_reputation_leader(qc):
-    print("In function: LeaderElection.elect_reputation_leader")
+    print(f"{Safety.validator_id}: In function: LeaderElection.elect_reputation_leader")
     global window_size, exclude_size
-    active_validators = set()
-    last_authors = set()
+    active_validators = []
+    last_authors = []
     current_qc = qc
     i = 0
     while i < window_size or len(last_authors) < exclude_size:
@@ -24,32 +31,54 @@ def elect_reputation_leader(qc):
         block_author = current_block.author
         if i < window_size:
             # signers is a set of validator ids
-            for signer in current_qc.signature.signers():
-                active_validators.add(signer)
+            #print(f"{Safety.validator_id}: Getting signers. qc:{qc.vote_info.round}")
+            for signer in current_qc.signers():
+                active_validators.append(signer)
         if len(last_authors) < exclude_size:
             # see safety validator id
-            last_authors.add(block_author)
+            last_authors.append(Safety.validator_map[block_author])
         current_qc = current_block.qc
         # backslash means complement set, make sure both are sets
-        active_validators -= last_authors
+        #active_validators -= last_authors
+        print(
+            f"\t\t\tactive:{active_validators},authors:{last_authors}. {Safety.validator_id}")
+        for author in last_authors:
+            try:
+                active_validators.remove(author)
+                # last_authors.remove(author)
+            except:
+                print(f"\t\t\tError removing. {Safety.validator_id}")
         i += 1
     random.seed(qc.vote_info.round)
-    return active_validators.random.choice()
+    # return active_validators.random.choice()
+    index = random.randint(0, len(active_validators)-1)
+    print(
+        f"\t\t\t\tYOOO {len(active_validators)},index:{index}. {Safety.validator_id}")
+    return active_validators[index]
 
 
 def update_leaders(qc):
-    print("In function: LeaderElection.update_leaders")
-    global reputation_leaders
-    extended_route = qc.vote_info.parent_round
-    qc_round = qc.vote_info.round
+    print(f"{Safety.validator_id}: In function: LeaderElection.update_leaders.")
+    # if round is 3 or less, don't call elect_reputation_leaders as you don't have enough
+    # voting history to generate a leader
     current_round = PaceMaker.current_round
-    if (extended_route + 1 == qc_round) and (qc_round + 1 == current_round):
+    if PaceMaker.current_round <= 4:
+        return
+    global reputation_leaders
+    extended_round = qc.vote_info.parent_round
+    qc_round = qc.vote_info.round
+    if extended_round == None and qc_round == 0:
+        # this was the genesis qc, skip
+        print("update leader genesis qc")
+        return
+    if (extended_round + 1 == qc_round) and (qc_round + 1 == current_round):
         reputation_leaders[current_round + 1] = elect_reputation_leader(qc)
+        print(f"\t\t\t\tOk dog {Safety.validator_id}")
 
 
 def get_leader(rnd):
     global validators, reputation_leaders
-    print("In function: LeaderElection.get_leader")
+    print(f"{Safety.validator_id}: In function: LeaderElection.get_leader")
     if rnd in reputation_leaders:
         return reputation_leaders[rnd]
-    return validators[(rnd / 2) % len(validators)]
+    return validators[(rnd // 2) % len(validators)]

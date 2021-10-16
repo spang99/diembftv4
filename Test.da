@@ -1,0 +1,71 @@
+import sys
+import Client
+import Validator
+from nacl.signing import SigningKey
+
+
+config(channel='fifo', clock='Lamport')
+
+
+def main():
+    client = new(Client.Client)
+    client2 = new(Client.Client)
+    validators = new(Validator.Validator, num=4)
+    validators_list = list(validators)
+
+    client_private_key = SigningKey.generate()
+    client_workload = Client.Workload(7, 2, False)
+    client_config = {}
+    client_config['f'] = 1
+    client_config['private_key'] = client_private_key
+    client_config['validators'] = validators
+    client_config['workload'] = client_workload
+    client_config['timeout'] = 10
+    print("Calling setup for client")
+    setup(client, (client_config,))
+
+    client2_private_key = SigningKey.generate()
+    client2_workload = Client.Workload(3, 4, False)
+    client2_config = {}
+    client2_config['f'] = 1
+    client2_config['private_key'] = client_private_key
+    client2_config['validators'] = validators
+    client2_config['workload'] = client2_workload
+    client2_config['timeout'] = 10
+    print("Calling setup for client2")
+    setup(client2, (client2_config,))
+
+    client_map = {str(client): client, str(client2): client2}
+
+    validator_private_keys = {}
+    validator_public_keys = {}
+    validator_map = {}
+    for i, val in enumerate(validators):
+        private_key = SigningKey.generate()
+        public_key = private_key.verify_key
+        validator_private_keys[val] = private_key
+        validator_public_keys[str(val)] = public_key
+        validator_map[str(val)] = val
+
+    for i, val in enumerate(validators):
+        print(i, val)
+        config = {}
+        config['private_key'] = validator_private_keys[val]
+        config['public_keys'] = validator_public_keys
+        #config['validator_id'] = "validator:"+str(i)
+        config['f'] = 1
+        # has to be list so that PaceMaker can deterministically choose a leader in case of round robin
+        config['validators'] = list(validators)
+        config['validator_map'] = validator_map
+        config['client_map'] = client_map
+        print(f"Calling setup for validator {i}")
+        setup(val, (validators-{val}, 0, config))
+
+    print(validators_list[0])
+    start(validators)
+    start(client)
+    start(client2)
+
+    await(each(c in {client, client2}, has=received(('finished_workload',), from_=c)))
+    output(f'\t\t\t\t\t\t\t\tdone')
+    send(('RunDone',), to=validators)

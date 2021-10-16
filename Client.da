@@ -26,7 +26,7 @@ class Workload:
 
 class Client(process):
     def setup(config):
-        print("Setting up client")
+        output("Setting up client")
         # setup the client
         # config is a dictionary with config information
         self.work_load = config["workload"]
@@ -37,7 +37,7 @@ class Client(process):
         self.timeout = config['timeout']  # wait for 2f+1 replies
 
     def receive(msg=('reply', reply), from_=p):
-        print(f"Received reply from {p} for RequestID: ...{reqid[-5:]}")
+        print(f"Received reply from {p} for RequestID: {reply[0]}")
         if reply[0] in replies:
             replies[reply[0]].append(reply[1])
         else:
@@ -48,24 +48,24 @@ class Client(process):
             sleep(work_load.delay)
             # send the request
             client = self
-            cmd = str(self) + " --- " + str(i)
-            reqid = nacl.hash.sha256(cmd.encode())
-            reqid_str = reqid.decode()
-            signature = private_key.sign(reqid)
-            req = Request(reqid_str, cmd, client, signature)
+            cmd = str(self) + "-" + str(i)+"\n"
+            req_hash = nacl.hash.sha256(cmd.encode())
+            reqid = i
+            signature = private_key.sign(req_hash)
+            req = Request(reqid, cmd, client, signature)
             print(f"Sending request to validators:{validators}")
             send(('Request', req), to=validators)
-            replies[reqid_str] = []
-            -- reply
-            # limitation: doesn't make sure replies are from unique validators
-            if await(len(replies[reqid_str]) == 2 * f + 1):
-                print(f"{cmd} was committed, result:{replies[reqid_str][0]}")
-                continue
-            elif timeout(timeout):
-                # retransmit request
-                print("retransmitting due to timeout")
+            replies[i] = []
+        #    -- reply
+        #    # limitation: doesn't make sure replies are from unique validators
+        #    if await(len(replies[i]) == 2 * f + 1):
+        #        print(f"{cmd} was committed, result:{replies[i][0]}")
+        #        continue
+        #    elif timeout(timeout):
+        #        # retransmit request
+        #        print("retransmitting due to timeout")
 
-        print("Finished workload and exiting")
+        output(f"\t\t\t\t\t\t\t\tFinished workload and exiting")
         # in main, you can use await(each(c in clients, has=received(('finished_workload',), from_=c)))
         # in order to determine when all clients have finished their workloads and you can tell
         # validators to exit

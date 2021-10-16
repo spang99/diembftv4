@@ -1,31 +1,50 @@
-import queue
 import Client
 from collections import deque
 import Validator
+import Safety
+
+clients = None
+
 
 # pool of submitted but not yet executed requests/transactions
-_request_pool = queue.Queue()
+request_pool = []
 
 # cache of recently executed requests/transactions replies
 _cached_results = []
+
+# pool of pending requests/transactions (submitted or proposed, but not yet committed)
+pending_requests = set()
+
+
+still_send = False
+validator_object = None
 
 
 def get_transactions():
     # called get_transactions to follow psuedocode, but really get_requests
     # if no pending requests, returns None.
-    try:
-        req = _request_pool.get_nowait()
-        return req
-    except queue.Empty:
-        return None
+    if len(request_pool) == 0:
+        return ''
+    else:
+        return_val = request_pool[0]
+        request_pool.remove(return_val)
+        return return_val.cmd
+
+
+def remove_from_requests(cmd):
+    print(f"{Safety.validator_id}: Inside mempool remove request.")
+    for req in request_pool:
+        if req.cmd == cmd:
+            print(f"{Safety.validator_id}: Removing request: {req.cmd}")
+            request_pool.remove(req)
 
 
 def add_request(req):
-    print("MemPool add_request called.")
+    print(f"{Safety.validator_id}: MemPool add_request called.")
     # first check if this is a retransmitted request
 
-    for (cached_request_id, cached_result) in _cached_results:
-        if cached_request_id == req.id:
+    for (cmd, cached_result) in _cached_results:
+        if req.cmd == cmd:
             print("Sending a cached response.")
             Validator.send_message(
                 'reply', (req.id, cached_result), req.client)
@@ -33,20 +52,26 @@ def add_request(req):
 
     # add request to _request_pool
     print("Adding request to pool")
-    _request_pool.put(req)
+    request_pool.append(req)
+    pending_requests.add(req.cmd)
     print("Added to queue.")
 
 
-def _cache_reply(request, result):
+def _cache_reply(req, result):
     # put an executed request in the cache
-    for reqid, _ in _cached_results:
-        if request.id == reqid:
+    for reqcmd, _ in _cached_results:
+        if req.cmd == reqcmd:
             # already cached
             return
-    _cached_results.appendleft((request.id, result))
+    _cached_results.append((req.cmd, result))
 
 
-def send_reply(req):
-    result = "Your cmd: " + req.cmd + " was committed."
-    Validator.send_message('reply', (req.id, result), req.client)
-    _cache_reply(req, result)
+def send_reply(cmd):
+    # Remove req from pending pool **
+
+    result = "Your cmd: " + cmd + " was committed."
+    # parse the client and sequence number from the command, and lookup the client in the dictionary
+    client_str = cmd.split('-')[0]
+    reqid = int(cmd.split('-')[1])
+    # validator_object.send_message('reply', (reqid, result), clients[client_str])
+    _cache_reply(cmd, result)
