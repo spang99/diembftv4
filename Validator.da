@@ -176,6 +176,7 @@ class Validator(process):
                 output(f"\tROUND DONE")
                 # pass
             elif timeout(timer_duration):
+                output(f"Timing out in round {PaceMaker.current_round}")
                 M = PaceMaker.local_timeout_round()
                 send(("TimeoutMsg", M), to=validators.union({self}))
 
