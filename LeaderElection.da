@@ -37,6 +37,8 @@ def elect_reputation_leader(qc):
     while i < window_size or len(last_authors) < exclude_size:
         # PSEUDOCODE(current_block < - Ledger.committed_block(current_qc.vote_info.parent_id))
         current_block = Ledger.committed_block(current_qc.vote_info.parent_id)
+        if not current_block:
+            return None
         # PSEUDOCODE(block_author < - current_block.author)
         block_author = current_block.author
         # PSEUDOCODE(if i < window_size then)
@@ -98,6 +100,8 @@ def get_leader(rnd):
     # PSEUDOCODE(if (round, leader) in reputation_leaders then)
     if rnd in reputation_leaders:
         # PSEUDOCODE(return leader)
-        return reputation_leaders[rnd]
+        leader = reputation_leaders[rnd]
+        if leader:
+            return leader
     # PSEUDOCODE(return validators[[round/2] mod |validators|])
     return validators[(rnd // 2) % len(validators)]

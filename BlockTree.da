@@ -170,6 +170,13 @@ def pending_block_tree_prune(newroot_id):
         nodes_to_keep.append(pending_block_tree[curr])
         # keep its children as well
         children += pending_block_tree[curr].children
+    # remove them from pending list as well
+    keep_ids = [x.block.id for x in nodes_to_keep]
+    cmds_to_prune = [
+        x.block.payload for x in pending_block_tree if x not in keep_ids]
+    for cmd in cmds_to_prune:
+        MemPool.remove_from_requests(cmd)
+        MemPool.pending_requests.remove(cmd)
     pending_block_tree.clear()
     for node in nodes_to_keep:
         pending_block_tree[node.block.id] = node
@@ -187,16 +194,17 @@ def process_qc(qc):
     # PSEUDOCODE(if qc.ledger_commit_info.commit_state_id != None then)
     if qc.ledger_commit_info.commit_state_id and (qc.vote_info.parent_id not in Ledger.commits):
         # included additional check to prevent committing an already committed block
-        print(
-            f"{Safety.validator_id}: Committing block cmd,round: {pending_block_tree[qc.vote_info.parent_id].block.payload, qc.vote_info.parent_round}")
+        # print(f"{Safety.validator_id}: Committing block cmd,round: {pending_block_tree[qc.vote_info.parent_id].block.payload, qc.vote_info.parent_round}")
+
         # PSEUDOCODE(Ledger.commit(qc.vote_info.parent_id))
         committed_request = Ledger.commit(qc.vote_info.parent_id)
         try:
             # remove pending request from mempool
+            payload = pending_block_tree[qc.vote_info.parent_id].block.payload
             MemPool.pending_requests.remove(
-                pending_block_tree[qc.vote_info.parent_id].block.payload)
+                payload)
             if Safety.validator_id == str(LeaderElection.get_leader(PaceMaker.current_round + 1)) and len(
-                    MemPool.pending_requests) == 0:
+                    MemPool.pending_requests) == 0 and payload != '':
                 # Since this may empty the pending requests pool, leader may not propose an empty block to allow other
                 # validators who don't have this qc to commit the commit_state_id. This variable ensures other validators
                 # get the qc

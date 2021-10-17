@@ -54,7 +54,8 @@ class Validator(process):
         committed_request = BlockTree.process_qc(qc)
         if committed_request:
             # send reply to the client
-            send_reply(committed_request)
+            if committed_request != '':
+                send_reply(committed_request)
 
         # PSUEDOCODE: LeaderElection.update_leaders(qc)
         LeaderElection.update_leaders(qc)
@@ -63,10 +64,10 @@ class Validator(process):
         if PaceMaker.advance_round_qc(qc):
             round_stop = True
             output(f"Stopping round because of qc.")
-            if len(MemPool.pending_requests) > 0:
+            if (len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests)):
                 # start new round timer
                 output(
-                    f"Starting round {PaceMaker.current_round} timer because of pending request.")
+                    f"Starting round {PaceMaker.current_round} timer because of pending request. {MemPool.pending_requests}, commits:{[x.payload for x in Ledger.commits.values()]}")
                 round_start = True
 
     # PSUEDOCODE: Procedure process_proposal_msg(P)
@@ -85,7 +86,7 @@ class Validator(process):
         # PSUEDOCODE: PaceMaker.advance_round_tc(P.last_round_tc)
         if PaceMaker.advance_round_tc(P.last_round_tc):
             round_stop = True
-            if len(MemPool.pending_requests) > 0:
+            if (len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests)):
                 round_start = True
 
         # PSUEDOCODE: round <- PaceMaker.current_round
@@ -100,6 +101,9 @@ class Validator(process):
             output("Error here")
             print(P.block.round, current_round, str(leader),
                   str(sender), P.block.author, leader)
+            # remove it from requests and pending?
+            MemPool.remove_from_requests(P.block.payload)
+            MemPool.pending_requests.remove(P.block.payload)
             return
 
         # PSUEDOCODE: Block-Tree.execute_and_insert(P)
@@ -131,7 +135,7 @@ class Validator(process):
         # PSUEDOCODE: PaceMaker.advance_round_tc(M.last_round_tc)
         if PaceMaker.advance_round_tc(M.last_round_tc):
             round_stop = True
-            if len(MemPool.pending_requests) > 0:
+            if (len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests)):
                 round_start = True
 
         # PSUEDOCODE: tc <- PaceMaker.process_remote_timeout(M)
@@ -143,9 +147,9 @@ class Validator(process):
             if PaceMaker.advance_round_tc(tc):
                 output(f"Advancing, but not starting, round because of tc.")
                 round_stop = True
-                if len(MemPool.pending_requests) > 0:
+                if (len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests)):
                     output(
-                        f"Starting round {PaceMaker.current_round} timer because of pending request.")
+                        f"Starting round {PaceMaker.current_round} timer because of pending request. {MemPool.pending_requests}, commits:{[x.payload for x in Ledger.commits.values()]}")
                     round_start = True
 
             # PSUEDOCODE: process_new_round_event(tc)
@@ -163,7 +167,7 @@ class Validator(process):
         qc = BlockTree.process_vote(M)
 
         # PSUEDOCODE: if qc != None then
-        if qc is not None:
+        if qc != None:
             # PSUEDOCODE: process_certificate_qc(qc)
             process_certificate_qc(qc)
 
@@ -186,8 +190,8 @@ class Validator(process):
 
                 #output("Waiting for requests/transactions to be submitted by clients...")
                 -- wait_for_requests
-                await(len(MemPool.pending_requests) > 0 or MemPool.progress_pending_cmd or run_done)
-                # await(len(MemPool.pending_requests) > 0 or run_done)
+                await((len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests)) or MemPool.progress_pending_cmd or run_done)
+                # await((len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests)) or run_done)
             if run_done:
                 # allow validator to exit
                 return

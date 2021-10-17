@@ -1,6 +1,7 @@
 import BlockTree
 import Safety
 import Validator
+import MemPool
 import time
 from collections import defaultdict
 
@@ -99,6 +100,14 @@ def advance_round_tc(tc):
     if tc is None or tc.round < current_round:
         # #PSUEDOCODE(return false)
         return False
+
+    for blocknode in BlockTree.pending_block_tree.values():
+        if blocknode.block.round == current_round-2:
+            try:
+                MemPool.pending_requests.remove(blocknode.block.payload)
+            except:
+                # catch if cmd not in pending_requests
+                pass
     # #PSUEDOCODE(last_round_tc <- tc)
     last_round_tc = tc
     # #PSUEDOCODE(start_timer(tc.round + 1))
