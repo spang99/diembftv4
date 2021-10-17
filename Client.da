@@ -1,7 +1,7 @@
+import nacl.hash
 from datetime import datetime
 from nacl.signing import SigningKey
 from nacl.signing import VerifyKey
-import nacl.hash
 from time import sleep
 
 config(channel='fifo', clock='Lamport')
@@ -37,7 +37,7 @@ class Client(process):
         self.timeout = config['timeout']  # wait for 2f+1 replies
 
     def receive(msg=('Reply', (reqid, result)), from_=p):
-        #print(f"Received reply from {p} for RequestID: {reqid}")
+        # print(f"Received reply from {p} for RequestID: {reqid}")
         if reqid in replies:
             replies[reqid].append(result)
         else:
@@ -48,12 +48,12 @@ class Client(process):
             sleep(work_load.delay)
             # send the request
             client = self
-            cmd = str(self) + "-" + str(i)+"\n"
+            cmd = str(self) + "-" + str(i) + "\n"
             req_hash = nacl.hash.sha256(cmd.encode())
             reqid = i
             signature = private_key.sign(req_hash)
             req = Request(reqid, cmd, client, signature)
-            #output(f"Sending request to validators:{validators}")
+            # output(f"Sending request to validators:{validators}")
             output("Sending request to validators.")
             send(('Request', req), to=validators)
             replies[i] = []

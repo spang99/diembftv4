@@ -4,7 +4,7 @@ import Validator
 import time
 from collections import defaultdict
 
-# #PSUEDOCODE(current_round;
+# PSEUDOCODE(current_round;
 # last_round_tc;
 # pending_timeouts;)
 current_round = 1
@@ -15,16 +15,16 @@ delta = 1
 
 def get_round_timer(r):
     # print(f"{Safety.validator_id}: In function: PaceMaker.get_round_timer")
-    # #PSUEDOCODE(return round timer formula)
+    # PSEUDOCODE(return round timer formula)
     return 4 * delta
 
 
 def start_timer(new_round):
     # print(f"{Safety.validator_id}: In function: PaceMaker.start_timer")
     global current_round
-    #  #PSUEDOCODE(stop_timer(current_round))
+    #  PSEUDOCODE(stop_timer(current_round))
     stop_timer(current_round)
-    # #PSUEDOCODE(current_round <- new_round)
+    # PSEUDOCODE(current_round <- new_round)
     current_round = new_round
     # print(f"{Safety.validator_id}: Timer started for round: {current_round}")
 
@@ -32,12 +32,12 @@ def start_timer(new_round):
 def local_timeout_round():
     global current_round
     # print(f"{Safety.validator_id}: In function: PaceMaker.local_timeout_round")
-    # #PSUEDOCODE(save_consensus_state())
+    # PSEUDOCODE(save_consensus_state())
     save_consensus_state()
-    # #PSUEDOCODE(timout_info <- Safety.make_timeout(current_round, Block-Tree.high_qc, last_round_tc))
+    # PSEUDOCODE(timout_info <- Safety.make_timeout(current_round, Block-Tree.high_qc, last_round_tc))
     timeout_info = Safety.make_timeout(
         current_round, BlockTree.high_qc, last_round_tc)
-    # #PSUEDOCODE(broadcast TimeoutMsg(timeout_info, last_round_tc, Block-Tree.high_commit_qc))
+    # PSEUDOCODE(broadcast TimeoutMsg(timeout_info, last_round_tc, Block-Tree.high_commit_qc))
     # Can't actually send message from here, instead return it to validator and send it from there
     return BlockTree.TimeoutMsg(timeout_info, last_round_tc, BlockTree.high_commit_qc)
 
@@ -46,15 +46,15 @@ def process_remote_timeout(tmo):
     # tmo is a timeout message
     # print(f"{Safety.validator_id}: In function: PaceMaker.process_remote_timeout. {Safety.validator_id}")
     global current_round, pending_timeouts
-    # #PSUEDOCODE(tmo_info <- tmo.tmo_info)
+    # PSEUDOCODE(tmo_info <- tmo.tmo_info)
     tmo_info = tmo.tmo_info
-    # #PSUEDOCODE(if tmo_info.round < current_round then)
+    # PSEUDOCODE(if tmo_info.round < current_round then)
     if tmo_info.round < current_round:
-        # #PSUEDOCODE(return None)
+        # PSEUDOCODE(return None)
         return None, None
-    # #PSUEDOCODE(if tmo_info.sender not in pending_timeouts[tmo_info_round].senders then)
+    # PSEUDOCODE(if tmo_info.sender not in pending_timeouts[tmo_info_round].senders then)
     if len(pending_timeouts[tmo_info.round]) == 0:
-        # #PSUEDOCODE(pending_timeouts[tmo_info.round] <- pending_timeouts[tmo_info.round] union {tmo.info})
+        # PSEUDOCODE(pending_timeouts[tmo_info.round] <- pending_timeouts[tmo_info.round] union {tmo.info})
         pending_timeouts[tmo_info.round].append(tmo_info)
         return None, None
     try:
@@ -64,15 +64,15 @@ def process_remote_timeout(tmo):
     if tmo_info.sender not in senders:
         pending_timeouts[tmo_info.round].append(tmo_info)
 
-    # #PSUEDOCODE(if |pending_timeouts[tmo_info.round].senders| == f + 1 then)
+    # PSEUDOCODE(if |pending_timeouts[tmo_info.round].senders| == f + 1 then)
     if len(pending_timeouts[tmo_info.round]) == BlockTree.f + 1:
-        # #PSUEDOCODE(stop_timer(current_round))
+        # PSEUDOCODE(stop_timer(current_round))
         stop_timer(current_round)
-        # #PSUEDOCODE(local_timeout_round())
+        # PSEUDOCODE(local_timeout_round())
         return None, local_timeout_round()
-    # #PSUEDOCODE(if |pending_timeouts[tmo_info.round].senders| == 2f + 1 then)
+    # PSEUDOCODE(if |pending_timeouts[tmo_info.round].senders| == 2f + 1 then)
     if len(pending_timeouts[tmo_info.round]) == 2 * BlockTree.f + 1:
-        # #PSUEDOCODE(return TC(
+        # PSEUDOCODE(return TC(
         #     round <- tmo_info.round,
         #     tmo_high_qc_rounds <- {t.high_qc.round | t in pending_timeouts[tmo_info.round]},
         #     signatures <- {t.signature | t in pending_timeouts[tmo_info.round]}))
@@ -83,7 +83,7 @@ def process_remote_timeout(tmo):
         for info in pending_timeouts[tmo_info.round]:
             signatures.append((info.sender, info.signature))
         return BlockTree.TC(tmo_info.round, high_qc_rounds, signatures), None
-    # #PSUEDOCODE(return None)
+    # PSEUDOCODE(return None)
     return None, None
 
 
@@ -95,15 +95,15 @@ def stop_timer(r):
 def advance_round_tc(tc):
     # print(f"{Safety.validator_id}: In function: PaceMaker.advance_round_tc. {Safety.validator_id}")
     global current_round, last_round_tc
-    # #PSUEDOCODE(if tc = None or tc.round < current_round then)
+    # PSEUDOCODE(if tc = None or tc.round < current_round then)
     if tc is None or tc.round < current_round:
-        # #PSUEDOCODE(return false)
+        # PSEUDOCODE(return false)
         return False
-    # #PSUEDOCODE(last_round_tc <- tc)
+    # PSEUDOCODE(last_round_tc <- tc)
     last_round_tc = tc
-    # #PSUEDOCODE(start_timer(tc.round + 1))
+    # PSEUDOCODE(start_timer(tc.round + 1))
     start_timer(tc.round + 1)
-    # #PSUEDOCODE(return true)
+    # PSEUDOCODE(return true)
     return True
 
 

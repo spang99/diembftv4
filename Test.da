@@ -1,8 +1,7 @@
-import sys
 import Client
 import Validator
+import sys
 from nacl.signing import SigningKey
-
 
 config(channel='fifo', clock='Lamport')
 
@@ -22,7 +21,7 @@ def main():
     client_config['validators'] = validators
     client_config['workload'] = client_workload
     client_config['timeout'] = 10
-    #print("Calling setup for client")
+    # print("Calling setup for client")
     setup(client, (client_config,))
 
     client3_private_key = SigningKey.generate()
@@ -44,11 +43,11 @@ def main():
     client2_config['validators'] = validators
     client2_config['workload'] = client2_workload
     client2_config['timeout'] = 10
-    #print("Calling setup for client2")
+    # print("Calling setup for client2")
     setup(client2, (client2_config,))
 
     client_map = {str(client): client, str(client2): client2, str(client3): client3}
-    #client_map = {str(client): client, str(client2): client2}
+    # client_map = {str(client): client, str(client2): client2}
 
     validator_private_keys = {}
     validator_public_keys = {}
@@ -68,15 +67,15 @@ def main():
             config['faulty'] = False
         config['private_key'] = validator_private_keys[val]
         config['public_keys'] = validator_public_keys
-        #config['validator_id'] = "validator:"+str(i)
+        # config['validator_id'] = "validator:"+str(i)
         config['f'] = 1
         # has to be list so that PaceMaker can deterministically choose a leader in case of round robin
         config['validators'] = list(validators)
         config['validator_map'] = validator_map
         config['client_map'] = client_map
-        config['validator_name'] = "Validator<"+str(i)+">"
-        #print(f"Calling setup for validator {i}")
-        setup(val, (validators-{val}, 0, config))
+        config['validator_name'] = "Validator<" + str(i) + ">"
+        # print(f"Calling setup for validator {i}")
+        setup(val, (validators - {val}, 0, config))
 
     # print(validators_list[0])
     start(validators)

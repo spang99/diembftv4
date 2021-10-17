@@ -78,7 +78,7 @@ def _consecutive(block_round, round):
 
 def _safe_to_extend(block_round, qc_round, tc):
     # print(f"{Safety.validator_id}: Inside Safety._safe_to_extend")
-    if tc == None:
+    if tc is None:
         print("Discarding message: No TC")
         return False
     # PSEUDOCODE(return consecutive(block_round, tc.round) and qc_round >= max{tc.tmo_high_qc_rounds})
@@ -102,7 +102,7 @@ def _safe_to_vote(block_round, qc_round, tc):
 def _safe_to_timeout(round, qc_round, tc):
     # print(f"{Safety.validator_id}: Inside Safety_safe_to_timeout.")
     global highest_qc_round, highest_vote_round
-    # PSEUDOCODE(if qc_round < highest_qc_round or round <=max{hightest_vote_round - 1, qc_round} then)
+    # PSEUDOCODE(if qc_round < highest_qc_round or round <=max{highest_vote_round - 1, qc_round} then)
     if (qc_round < highest_qc_round) or (round <= max(highest_vote_round - 1, qc_round)):
         # respect highest_qc_round and don't timeout in a past round
         print(
@@ -114,7 +114,7 @@ def _safe_to_timeout(round, qc_round, tc):
 
 
 def _commit_state_id_candidate(block_round, qc):
-    # find the commited id in case a qc is formed in the vote round
+    # find the committed id in case a qc is formed in the vote round
     # PSEUDOCODE(if consecutive(block_round, qc.vote_info_round) then)
     if _consecutive(block_round, qc.vote_info.round):
         # Should we add check here to make sure we don't return a commitstateid for genesis qc?
@@ -166,7 +166,7 @@ def _valid_signatures(qc, last_tc):
         # genesis qc, don't have any signatures to check
         return True
     if qc.author not in _public_keys:
-        # this implementation requires validators to also keep thier own public key in public_keys,
+        # this implementation requires validators to also keep their own public key in public_keys,
         # since it's possible that the received qc could be authored by itself in the case of multiple
         # view changes
         print(f"{Safety.validator_id}: Discarding message: Unknown author.")
@@ -236,7 +236,7 @@ def make_timeout(round, high_qc, last_tc):
     if _valid_signatures(high_qc, last_tc) and _safe_to_timeout(round, qc_round, last_tc):
         # PSEUDOCODE(increase_highest_vote_round(round))
         _increase_highest_vote_round(round)  # stop voting for round
-        if _private_key == None:  # make sure you have a private key to perform signature
+        if _private_key is None:  # make sure you have a private key to perform signature
             print(f" {Safety.validator_id}: No private key given.")
             return None
         else:

@@ -1,10 +1,9 @@
 import Client
-from collections import deque
-import Validator
 import Safety
+import Validator
+from collections import deque
 
 clients = None
-
 
 # pool of submitted but not yet executed requests/transactions
 request_pool = []
@@ -15,12 +14,11 @@ _cached_results = []
 # pool of pending requests/transactions (submitted or proposed, but not yet committed)
 pending_requests = set()
 
-
 progress_pending_cmd = False
 
 
 def get_transactions():
-    # called get_transactions to follow psuedocode, but really get_requests
+    # called get_transactions to follow pseudocode, but really get_requests
     # if no pending requests, returns None.
     if len(request_pool) == 0:
         return ''
@@ -31,21 +29,21 @@ def get_transactions():
 
 
 def remove_from_requests(cmd):
-    #print(f"{Safety.validator_id}: Inside mempool remove request.")
+    # print(f"{Safety.validator_id}: Inside mempool remove request.")
     for req in request_pool:
         if req.cmd == cmd:
-            #print(f"{Safety.validator_id}: Removing request: {req.cmd}")
+            # print(f"{Safety.validator_id}: Removing request: {req.cmd}")
             request_pool.remove(req)
 
 
 def add_request(req):
-    #print(f"{Safety.validator_id}: MemPool add_request called.")
+    # print(f"{Safety.validator_id}: MemPool add_request called.")
     # first check if this is a retransmitted request
 
     for (cmd, cached_result) in _cached_results:
         if req.cmd == cmd:
             # Sending a cached response
-            return (req.id, cached_result)
+            return req.id, cached_result
 
     # add request to _request_pool
     if req in request_pool:
@@ -54,11 +52,11 @@ def add_request(req):
             f"{Safety.validator_id}: Request: {req.cmd} already submitted. Not adding to pool.")
         return
     elif req.cmd in pending_requests:
-        #print(f"{Safety.validator_id}: Request: {req.cmd} is already pending. Not adding to pool.")
+        # print(f"{Safety.validator_id}: Request: {req.cmd} is already pending. Not adding to pool.")
         return
     request_pool.append(req)
     pending_requests.add(req.cmd)
-    #print(f"{Safety.validator_id}: Added Request: {req.cmd} to pool.")
+    # print(f"{Safety.validator_id}: Added Request: {req.cmd} to pool.")
 
 
 def cache_reply(cmd, result):

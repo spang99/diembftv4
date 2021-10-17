@@ -47,7 +47,7 @@ def elect_reputation_leader(qc):
                 active_validators.append(signer)
         # PSEUDOCODE(if |last_authors| < exclude_size then)
         if len(last_authors) < exclude_size:
-            # PSEUDOCODE(last_authors <- lastauthors union {block_author})
+            # PSEUDOCODE(last_authors <- last_authors union {block_author})
             last_authors.append(Safety.validator_map[block_author])
         # PSEUDOCODE(current_qc <- current_block.qc)
         current_qc = current_block.qc
@@ -82,7 +82,7 @@ def update_leaders(qc):
     extended_round = qc.vote_info.parent_round
     # PSEUDOCODE(qc_round <- qc.vote_info.round)
     qc_round = qc.vote_info.round
-    if extended_round == None and qc_round == 0:
+    if extended_round is None and qc_round == 0:
         # this was the genesis qc, skip
         print("update leader genesis qc")
         return

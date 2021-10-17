@@ -111,7 +111,7 @@ class VoteMsg:
                 (ledger_commit_info.commit_state_id + ledger_commit_info.vote_info_hash).encode())
         else:
             self.signature = Safety.get_private_key().sign(
-                (ledger_commit_info.vote_info_hash).encode())
+                ledger_commit_info.vote_info_hash.encode())
         # print(f'{Safety.validator_id}: Created new VoteMsg class')
 
 
@@ -163,9 +163,9 @@ def pending_block_tree_prune(newroot_id):
     # print(f"\t\t\t\tPREV PENDING_BLOCK_TREE:{pending_block_tree}")
     nodes_to_keep = []
     children = pending_block_tree[newroot_id].children
-    while (len(children) > 0):
+    while len(children) > 0:
         curr = children.pop(0)
-        if curr == None:
+        if curr is None:
             continue
         nodes_to_keep.append(pending_block_tree[curr])
         # keep its children as well
@@ -240,7 +240,7 @@ def execute_and_insert(b):
 def verify_signature(v):
     ##print(f"{Safety.validator_id}: Inside BlockTree.verify_signature")
     verify_key = Safety.get_public_key(v.sender)
-    if verify_key == None:
+    if verify_key is None:
         return False
     try:
         verify_key.verify(v.signature)
@@ -253,7 +253,7 @@ def verify_signature(v):
 def process_vote(v):  # v is of type VoteMsg
     global pending_votes, f
     # print(f'{Safety.validator_id}: In function: process_vote')
-    if v.high_commit_qc != None:
+    if v.high_commit_qc is not None:
         # PSEUDOCODE(process_qc(v.high_commit_qc))
         process_qc(v.high_commit_qc)
     commit_state_id = v.ledger_commit_info.commit_state_id
@@ -263,7 +263,7 @@ def process_vote(v):  # v is of type VoteMsg
             (v.ledger_commit_info.commit_state_id + v.ledger_commit_info.vote_info_hash).encode()).decode()
     else:
         vote_idx = nacl.hash.sha256(
-            (v.ledger_commit_info.vote_info_hash).encode()).decode()
+            v.ledger_commit_info.vote_info_hash.encode()).decode()
     if verify_signature(v):
         # PSEUDOCODE(pending_votes[vote_idx] <- pending_votes[vote_idx] union v.signature)
         pending_votes[vote_idx].append((v.sender, v.signature))
@@ -294,7 +294,7 @@ def generate_block(txns, current_round):
     #     id <- hash(author || round || payload || qc.vote_info.id || qc.signatures)))
     qc = high_qc
     segment_1 = nacl.hash.sha256(
-        ((Safety.validator_id) + "-" + str(current_round) + "-" + txns + str(qc.vote_info.id)).encode())
+        (Safety.validator_id + "-" + str(current_round) + "-" + txns + str(qc.vote_info.id)).encode())
     if qc.vote_info.round == 0:
         # no signatures in the genesis QC, so skip segment 2
         segment_2 = b''
