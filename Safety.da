@@ -16,6 +16,7 @@ _public_keys = None
 
 f = None
 validator_id = None
+validator_name = None
 validators = None
 validator_map = None
 

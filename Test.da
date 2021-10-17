@@ -74,6 +74,7 @@ def main():
         config['validators'] = list(validators)
         config['validator_map'] = validator_map
         config['client_map'] = client_map
+        config['validator_name'] = "Validator<"+str(i)+">"
         #print(f"Calling setup for validator {i}")
         setup(val, (validators-{val}, 0, config))
 

@@ -16,6 +16,7 @@ class Validator(process):
         Safety.set_private_key(config['private_key'])
         Safety.set_public_keys(config['public_keys'])
         Safety.validator_id = str(self)
+        Safety.validator_name = config['validator_name']
         Safety.f = (config['f'])
         Safety.validators = config['validators']
         Safety.validator_map = config['validator_map']
@@ -261,4 +262,4 @@ class Validator(process):
                 M = PaceMaker.local_timeout_round()
                 send(("TimeoutMsg", M), to=validators.union({self}))
 
-        output("Exiting")
+        output(f"Exiting: {Safety.validator_name}")
