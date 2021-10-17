@@ -79,7 +79,8 @@ def commit(block_id):
 
 
 def committed_block(block_id):
-    return commits[block_id]
+    if block_id in commits:
+        return commits[block_id]
 
 
 def pending_state(block_id):

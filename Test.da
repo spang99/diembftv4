@@ -14,7 +14,7 @@ def main():
     validators_list = list(validators)
 
     client_private_key = SigningKey.generate()
-    client_workload = Client.Workload(1, 2, False)
+    client_workload = Client.Workload(7, 2, False)
     client_config = {}
     client_config['f'] = 1
     client_config['private_key'] = client_private_key
@@ -25,7 +25,7 @@ def main():
     setup(client, (client_config,))
 
     client3_private_key = SigningKey.generate()
-    client3_workload = Client.Workload(10, 1, False)
+    client3_workload = Client.Workload(4, 2, False)
     client3_config = {}
     client3_config['f'] = 1
     client3_config['private_key'] = client_private_key
@@ -36,7 +36,7 @@ def main():
     setup(client3, (client3_config,))
 
     client2_private_key = SigningKey.generate()
-    client2_workload = Client.Workload(1, 10, False)
+    client2_workload = Client.Workload(1, 15, False)
     client2_config = {}
     client2_config['f'] = 1
     client2_config['private_key'] = client_private_key
@@ -61,7 +61,7 @@ def main():
 
     for i, val in enumerate(validators):
         config = {}
-        if i == 2:
+        if i == 3:
             config['faulty'] = True
         else:
             config['faulty'] = False
