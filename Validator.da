@@ -9,10 +9,10 @@ import MemPool
 import PaceMaker
 
 config(channel='fifo', clock='Lamport')
-
+#empty_string_count = 0 #Used to get rid of unnecessary blocks with payload as ''. If empty_string_push>2 that means all transactions have been committed
 
 class Validator(process):
-    def setup(validators: set, exit_cnt: int, clients: set, config):
+    def setup(validators: set, empty_string_cnt: int, exit_flag: int, clients: set, config):
         print("Setting up validator")
         Safety.set_private_key(config['private_key'])
         Safety.set_public_keys(config['public_keys'])
@@ -63,7 +63,7 @@ class Validator(process):
         print(f'A{P.block.rnd, current_round}')
         print(f'B{sender, leader}')
         print(f'C{P.block.author, leader}')
-        if PaceMaker.current_round is 4:
+        if PaceMaker.current_round is -1:
             print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]Calling a local timeout\033[1;37m')
             PaceMaker.local_timeout_round()
             time.sleep(3)
@@ -98,15 +98,32 @@ class Validator(process):
     def process_new_round_event(last_tc):
         print(f'\033[1;33m [Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}] In function: process_new_round_event \033[1;37m')
         print('Waiting for transactions')
-        #await(some(c in MemPool.clients, has= received(('Request', req), c))))
-        time.sleep(2)
+        time.sleep(1)
         -- handle_receive_requests
         #print(f'\033[1;33m Val ID {Safety.validator_id} leader is {LeaderElection.get_leader(PaceMaker.current_round)}\033[1;37m')
         if Safety.validator_id is LeaderElection.get_leader(PaceMaker.current_round):
-            b = BlockTree.generate_block(MemPool.get_transactions(), PaceMaker.current_round)
             #if there are no more transactions from the client, the client sends after a delay 'Exit'
-            if b.payload == 'Exit':
-                sys.exit("\033[1;33m No more requests from client \033[1;37m")
+            if empty_string_cnt >= 3:
+                if await(len(MemPool._request_pool) > 0):
+                    print(f"Received request, will fetch from request_pool")
+                    time.sleep(1)
+                elif timeout(10):
+                    # retransmit request
+                    exit_flag = 1
+                    print("Exiting, as there is no client")
+                    return
+                    #sys.exit("\033[1;33m No more requests from client \033[1;37m")
+            b = BlockTree.generate_block(MemPool.get_transactions(), PaceMaker.current_round)
+            if b.payload == '':
+                empty_string_cnt += 1 #required for chain to proceed
+            else:
+                empty_string_cnt = 0
+            if b.payload == "Exit":
+                send(("Exit", self), to= validators)
+                exit_flag = 1
+                return
+            #if b.payload == 'Exit':
+            #    sys.exit("\033[1;33m No more requests from client \033[1;37m")
             P = BlockTree.ProposalMsg(b, last_tc, BlockTree.high_commit_qc)
             print(f'\033[1;33m Broadcasting proposal message of size {sys.getsizeof(P)} \033[1;37m')
             send(("ProposalMsg", P, Safety.validator_id), to=Safety.validators)
@@ -122,6 +139,9 @@ class Validator(process):
 
     def receive(msg=("LocalTimeout", M, sender)):
         PaceMaker.local_timeout_round()
+    
+    def receive(msg=("Exit", sender)):
+        exit_flag = 1
 
     def receive(msg=("Request", req, p)):
         print(f"Received request from client:{p}.")
@@ -134,7 +154,7 @@ class Validator(process):
         time.sleep(2)
         -- receive_requests_from_client
         process_new_round_event(None)
-        await(exit_cnt >= 5)
-
+        await (exit_flag == 1)
+        print('@@@@@@@@@@@@@Exiting, goodbye!!@@@@@@@@@@@@@@@@')
         # while exit_cnt < 3:
         #    continue

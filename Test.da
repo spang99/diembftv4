@@ -32,7 +32,7 @@ def main():
         config['clients'] = clients
         config['req1'] = Request("", "Hello", 0, 0)
         config['req2'] = Request("", "Hi", 0, 0)
-        setup(node_map[i], (validators-{node_map[i]}, 0, clients, config))
+        setup(node_map[i], (validators-{node_map[i]}, 0, 0, clients, config))
         print(f"Validator {i} created")
 
     #create client
