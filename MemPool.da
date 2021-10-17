@@ -19,7 +19,7 @@ def get_transactions():
     # if no pending requests, returns None.
         if len(_request_pool) is 0:
             print(f"\033[1;30m QueueEmpty \033[1;37m")
-            return None
+            return "" #send this to keep the chain going
         print(f'\033[1;30m Sending Mempool Request {_request_pool[0].cmd}, queue size now {len(_request_pool)}\033[1;37m')
         _pending_requests[_request_pool[0].cmd] = _request_pool[0]
         return _request_pool.popleft().cmd
@@ -39,6 +39,7 @@ def add_request(req):
     # add request to _request_pool
     print("\033[1;30m Adding request to pool\033[1;37m")
     _request_pool.append(req)
+    #_pending_requests[req.cmd] = req
     print("\033[1;30m Added to queue. \033[1;37m")
 
 
@@ -53,7 +54,10 @@ def _cache_reply(request, result):
 
 def send_reply(reply):
     result = "Your cmd: " + reply + " was committed."
+    if reply not in _pending_requests:
+        print(f'\033[1;30m Going to crash\033[1;37m')
     req = _pending_requests[reply]
     print(f"Sending Reply to {req.client}")
     send_message("reply", (req.id, result), req.client)
+    #_pending_requests.pop(reply, None)
     _cache_reply(req, result)

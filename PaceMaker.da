@@ -1,12 +1,14 @@
 import time
 import BlockTree
 import Safety
-import Validator
+import MemPool
+import PaceMaker
 
 current_round = 0
 last_round_tc = None
-pending_timeouts = []
+pending_timeouts = {int:{}}
 delta = None
+
 
 
 # time_started = 0
@@ -30,35 +32,57 @@ def start_timer(new_round):
 
 def local_timeout_round():
     global current_round
-    print("In function: PaceMaker.local_timeout_round")
+    print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]In function: local_timeout_round\033[1;37m')
     save_consensus_state()
-    timeout_info = Safety.make_timeout(
-        current_round, BlockTree.high_qc, last_round_tc)
-    broadcast(BlockTree.TimeoutMsg(timeout_info,
-              last_round_tc, BlockTree.high_commit_qc))
+    timeout_info = Safety.make_timeout(current_round, BlockTree.high_qc, last_round_tc)
+    broadcast(BlockTree.TimeoutMsg(timeout_info, last_round_tc, BlockTree.high_commit_qc))
 
 
-def process_remote_timeout(tmo):
+def process_remote_timeout(tmo, sender):
     # tmo is a timeout message
-    print("In function: PaceMaker.process_remote_timeout")
+    print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]In function: process_remote_timeout\033[1;37m')
     global current_round, pending_timeouts
     tmo_info = tmo.tmo_info
-    if tmo_info.round < current_round:
+    if tmo_info.rnd < current_round:
         return None
-    if tmo_info.sender not in pending_timeouts[tmo_info.round].senders:
-        pending_timeouts[tmo_info.round] = pending_timeouts[tmo_info.round].add(
-            tmo_info)
-    if len(pending_timeouts[tmo_info.round].senders) == BlockTree.f + 1:
+
+    print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]flag is set to false\033[1;37m')
+    flag = False
+    if pending_timeouts.get(tmo_info.rnd, None) is None:
+        x = set()
+        x.add(tmo_info)
+        pending_timeouts[tmo_info.rnd] = x
+        print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]If condition satisfied\033[1;37m')
+    else:
+        print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]Else condition satisfied\033[1;37m')
+        for info in pending_timeouts.get(tmo_info.rnd, None):
+            if info.sender is sender:
+                flag = True
+                break
+        if flag is False:
+            print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]Adding {tmo_info} at {tmo_info.rnd}\033[1;37m')
+            pending_timeouts[tmo_info.rnd].add(tmo_info)
+
+    print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]Checking for round {tmo_info.rnd}\033[1;37m')
+
+    #pending_timeouts.get((tmo_info.rnd, None)) is not None and
+    print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]Checking for\
+        {len(pending_timeouts[tmo_info.rnd])} and {BlockTree.f}\033[1;37m')
+    if len(pending_timeouts[tmo_info.rnd]) is (BlockTree.f + 1):
+        print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]^^^^^^^^^^^^^^^^^^^^^Starting local timeout as^^^^^^^^^^^^^^^^^^^^^^^^^^{BlockTree.f+1} TO messages have been received\033[1;37m')
         stop_timer(current_round)
         local_timeout_round()
-    if len(pending_timeouts[tmo_info.round].senders) == 2 * BlockTree.f + 1:
+
+    if len(pending_timeouts[tmo_info.rnd]) is (2*BlockTree.f + 1):
+        print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]Attempt Creating a TC\033[1;37m')
         high_qc_rounds = []
-        for info in pending_timeouts[tmo_info.round]:
-            high_qc_rounds.add(info.high_qc)
+        for info in pending_timeouts[tmo_info.rnd]:
+            high_qc_rounds.append(info.high_qc)
         signatures = []
-        for info in pending_timeouts[tmo_info.round]:
-            signatures.add(info.signature)
-        return BlockTree.TC(tmo_info.round, high_qc_rounds, signatures)
+        for info in pending_timeouts[tmo_info.rnd]:
+            signatures.append([info.sender, info.signature])
+        print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]$$$$$$$$$$$$$$$$$$$$Creating a TC$$$$$$$$$$$$$$$$$$$\033[1;37m')
+        return BlockTree.TC(tmo_info.rnd, high_qc_rounds, signatures)
     return None
 
 
@@ -71,10 +95,11 @@ def stop_timer(r):
 def advance_round_tc(tc):
     print("In function: PaceMaker.advance_round_tc")
     global current_round, last_round_tc
-    if tc is None or tc.round < current_round:
+    if tc is None or tc.rnd < current_round:
+        print(f'\033[1;35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]Returning false\033[1;37m')
         return False
     last_round_tc = tc
-    start_timer(tc.round + 1)
+    start_timer(tc.rnd + 1)
     return True
 
 
@@ -95,8 +120,8 @@ def advance_round_qc(qc):
     return True
 
 
-def broadcast(msg):
-    print("In function: PaceMaker.broadcast")
+def broadcast(M):
+    print(f'\033[35m[Val{Safety.validator_id} {Safety.node_map[Safety.validator_id]}]Broadcasting timeout message\033[1;37m')
     # send a timeoutMsg to all other validators
     # for validator in LeaderElection.validators:
-    Validator.send_message('TimeoutMsg', msg, Validator.validators)
+    MemPool.send_message("TimeoutMsg", M, Safety.other_validators)

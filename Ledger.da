@@ -40,6 +40,7 @@ def commit(block_id):
     # if block_id in BlockTree.pending_block_tree.blocks:
     global commits, commit_queue
     BlockTree.print_pending_block_tree()
+    #after a commit only ONE element should remain in the tree
     bl = BlockTree.pending_block_tree.tree[0].blocks[block_id]
     filename = 'Database'+str(Safety.validator_id)+'.txt'
     commits[block_id] = bl

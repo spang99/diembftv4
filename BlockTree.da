@@ -74,10 +74,10 @@ class QC:
 
 
 class TimeoutMsg:
-    def __init__(self, tmo_info, last_round_tc, high_commit_info):
+    def __init__(self, tmo_info, last_round_tc, high_commit_qc):
         self.tmo_info = tmo_info
         self.last_round_tc = last_round_tc
-        self.high_commit_info = high_commit_info
+        self.high_commit_qc = high_commit_qc
         print('Created new TimeoutMsg class')
 
 
@@ -94,7 +94,7 @@ class TimeoutInfo:
         self.rnd = rnd
         self.high_qc = high_qc
         self.sender = sender
-        self.signature = Safety._private_key.sign(high_qc.rnd)
+        self.signature = Safety._private_key.sign(str(high_qc.vote_info.rnd).encode())
         print('Created new TimeoutInfo class')
 
 
@@ -138,6 +138,12 @@ def process_qc(qc):
     global pending_block_tree, high_commit_qc, high_qc
     print(f"[Val{Safety.validator_id}]\033In function: process_qc\033[1;37m")
     if (qc is not None) and (qc.ledger_commit_info.commit_state_id is not None) and (qc.vote_info.parent_id not in Ledger.commits):
+        #if tree has size > 2, commit older requests first
+        print(f"[Val{Safety.validator_id}]\033[1;33m Commit old blocks first if tree size>2 \033[1;37m")
+        while len(pending_block_tree.tree) > 2:
+            for bl in pending_block_tree.tree[0].blocks.items():
+                Ledger.commit(bl[1].id)
+                pending_block_tree.tree.popleft()
         # included additional check to prevent committing an already committed block
         Ledger.commit(qc.vote_info.parent_id)
         print(f"[Val{Safety.validator_id}]\033[1;33m Committed block from round {qc.vote_info.parent_round}\033[1;37m")

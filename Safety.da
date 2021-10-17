@@ -11,6 +11,7 @@ from nacl.signing import VerifyKey
 _private_key = None
 _public_keys = None
 validator_id = None
+other_validators = None
 _f = None
 
 node_map = {} #maps validator_id to process_id
@@ -76,7 +77,7 @@ def _safe_to_extend(block_round, qc_round, tc):
     if tc == None:
         print("Discarding message: No TC")
         return False
-    return _consecutive(block_round, tc.rnd) and (qc_round >= max(tc.tmo_high_qc_rounds))
+    return _consecutive(block_round, tc.rnd) and (qc_round >= max(qc.vote_info.rnd for qc in tc.tmo_high_qc_rounds))
 
 
 def _safe_to_vote(block_round, qc_round, tc):
@@ -93,8 +94,9 @@ def _safe_to_vote(block_round, qc_round, tc):
 
 def _safe_to_timeout(rnd, qc_round, tc):
     global highest_qc_round, highest_vote_round
-    if (qc_round < highest_qc_round) or (round <= max(highest_vote_round - 1, qc_round)):
+    if (qc_round < highest_qc_round) or (rnd <= max(highest_vote_round - 1, qc_round)):
         # respect highest_qc_round and don't timeout in a past round
+        print(f'\033[1;32m >>>>>>>>>>>>>>>Returning False from _safe_to_timeout{highest_qc_round, }<<<<<<<<<<<<<<<<<<<\033[1;37m')
         return False
     return _consecutive(rnd, qc_round) or _consecutive(rnd, tc.rnd)
 
@@ -130,12 +132,12 @@ def _valid_signatures(qc, last_tc):
 
     if last_tc:
         if len(last_tc.tmo_signatures) < 2 * _f + 1:
-            print("Discarding message: TC does not have a quorum of signatures.")
+            print(f'\033[1;35m[Val{validator_id} {node_map[validator_id]}]Discarding message: TC does not have a quorum of signatures.\033[1;33m')
             return False
         for sender, signature in last_tc.tmo_signatures:
             # verify each signature
-            if sender not in _public_keys:
-                print("Discarding message: Unknown signature in TC.")
+            if sender not in node_map:
+                print(f"Discarding message: Unknown signature in TC by {sender}.")
                 return False
             if not _valid_signature(_public_keys[sender], signature):
                 return False
@@ -148,24 +150,24 @@ def _valid_signatures(qc, last_tc):
         # this implementation requires validators to also keep thier own public key in public_keys,
         # since it's possible that the received qc could be authored by itself in the case of multiple
         # view changes
-        print("\033[1;34m Discarding message: Unknown author. \033[1;34m")
+        print(f"\033[1;34m[Val{validator_id} {node_map[validator_id]}] Discarding message: Unknown author. \033[1;34m")
         return False
     print(_public_keys[qc.author], qc.author_signature)
     if not _valid_signature(_public_keys[qc.author], qc.author_signature):
-        print(f'\033[1;34m **********Returning False{_public_keys[qc.author], qc.author_signature}*************** \033[1;37m')
+        print(f'\033[1;34m[Val{validator_id} {node_map[validator_id]}] **********Returning False due to key mismatch*************** \033[1;37m')
         return False
     if len(qc.signatures) < 2 * _f + 1:
-        print("\033[1;34m Discarding message: QC does not have a quorum of signatures.\033[1;37m")
+        print(f"\033[1;34m[Val{validator_id} {node_map[validator_id]}] Discarding message: QC does not have a quorum of signatures.\033[1;37m")
         return False
     for sender, signature in qc.signatures:
         if sender not in node_map:
-            print("\033[1;34m Discarding message: Unknown signature in QC \033[1;37m")
+            print(f"\033[1;34m[Val{validator_id} {node_map[validator_id]}] Discarding message: Unknown signature in QC \033[1;37m")
             return False
         if not _valid_signature(_public_keys[sender], signature):
-            print("\033[1;34m Not valid signature \033[1;37m")
+            print(f"\033[1;34m[Val{validator_id} {node_map[validator_id]}] Not valid signature \033[1;37m")
             return False
     
-    print('>>>>>>>>>>>>>Exit _valid_signatures with true<<<<<<<<<<<<<<<<')
+    print(f'[Val{validator_id} {node_map[validator_id]}]>>>>>>>>>>>>>Exit _valid_signatures with true<<<<<<<<<<<<<<<<')
     return True
 
 
@@ -211,15 +213,19 @@ def make_vote(b, last_tc):
 def make_timeout(rnd, high_qc, last_tc):
     # Make a TimeoutInfo after a local timeout
 
-    global _validator_id, _private_key
+    global validator_id, _private_key
+    print(f'\033[1;35m[Val{validator_id} {node_map[validator_id]}]In function: Safety.make_timeout\033[1;33m')
     qc_round = high_qc.vote_info.rnd
+    print(f'\033[1;35m[Val{validator_id}]value of qc_round is {qc_round}\033[1;33m')
     if _valid_signatures(high_qc, last_tc) and _safe_to_timeout(rnd, qc_round, last_tc):
         _increase_highest_vote_round(rnd)  # stop voting for round
         if _private_key == None:  # make sure you have a private key to perform signature
             print("No private key given.")
             return None
         else:
-            signature = _private_key.sign((rnd, high_qc.round))
-        return BlockTree.TimeoutInfo(rnd, high_qc, _validator_id, signature)
+            signature = _private_key.sign((rnd, high_qc.vote_info.rnd))
+        print(f'\033[1;35m[Val{validator_id} {node_map[validator_id]}]Safety.make_timeout: Returning with Timeout Info object\033[1;33m')
+        return BlockTree.TimeoutInfo(rnd, high_qc, validator_id)
     else:
+        print(f'\033[1;35m[Val{validator_id} {node_map[validator_id]}]Safety.make_timeout: Returning with None\033[1;33m')
         return None

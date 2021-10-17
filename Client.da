@@ -37,7 +37,7 @@ class Client(process):
         self.f = config['f']  # faulty validators
         self.timeout = config['timeout']  # wait for 2f+1 replies
 
-    def receive(msg=('reply', reply), from_=p):
+    def receive(msg=('reply', reply, q), from_=p):
         print(f'\033[1;32m %%%%%%%%%%%%%%%%%%%%%[Client{self}] Received reply from Validator{p}\033%%%%%%%%%%%%%%%%%%%%%%%%%%%%%[1;37m')
         if reply[0] in replies:
             replies[reply[0]].append(reply[1])
