@@ -62,9 +62,6 @@ def commit(block_id):
     # commits[block_id] = bl
     # deque.append(bl)
     # print("Committed block {block_id}")
-    # if len(commit_queue) > q_size:
-    #    commits.pop(commits[commit_queue[0]])
-    #    commit_queue.pop_left()
     # return state_id
 
     if block_id not in BlockTree.pending_block_tree:
@@ -74,15 +71,37 @@ def commit(block_id):
     f = open(filename, 'a')
     f.write(block.payload)
     f.close()
-    commits[block_id] = block
+    
+    # storing in dictionary for quick retrieval
+    commit_queue.append(block) #appending to commit_queue for updating other nodes if they fall back
+    #deelete element from commit queue and commits for efficient memory usage
+    if (len(commit_queue) > q_size):
+        # we should store deleted elements in a files
+        #f = open(commits_file, 'a')
+        #f.write(str(commit_queue[0].id)+'------>'+commit_queue[0].txn)
+        #f.close()
+        #commits_file.append()
+        commits.pop(commit_queue[0].id)
+        commit_queue.popleft()
+
+
     Safety.log("Committed Block:", f"block_id: {block_id}")
     return block.payload
 
+#PSEUDOCODE for updating other validators
+#def update_node(block_id):
+#    missing = []
+#    if block_id in commits: #This means block id is in memory
+#        idx = index of block_id in commit_queue
+#        append all transactions from idx+1 onwards to 'missing'
+#    else: (means block_id is in file)
+#        idx = index of block_id in file
+#        append next transaction onwards till the end of file to missing list
+#        append all transactions from commit_queue
 
 def committed_block(block_id):
     if block_id in commits:
         return commits[block_id]
-
 
 def pending_state(block_id):
     return state_id[block_id]
