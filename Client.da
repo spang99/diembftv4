@@ -66,6 +66,8 @@ class Client(process):
                 # retransmit request
                 print("retransmitting due to timeout")
 
+        req = Request('', 'Exit', 0, 0)
+        send(("Request", req, self), to=validators)
         print("Finished workload and exiting")
         # in main, you can use await(each(c in clients, has=received(('finished_workload',), from_=c)))
         # in order to determine when all clients have finished their workloads and you can tell
