@@ -156,7 +156,7 @@ def setup_BlockTree():
 
 def pending_block_tree_prune(newroot_id):
     global pending_block_tree
-    print(f"\t\t\t\tPREV PENDING_BLOCK_TREE:{pending_block_tree}")
+    #print(f"\t\t\t\tPREV PENDING_BLOCK_TREE:{pending_block_tree}")
     nodes_to_keep = []
     children = pending_block_tree[newroot_id].children
     while (len(children) > 0):
@@ -170,7 +170,7 @@ def pending_block_tree_prune(newroot_id):
     for node in nodes_to_keep:
         pending_block_tree[node.block.id] = node
 
-    print(f"\t\t\t\tCURRENT PENDING_BLOCK_TREE:{pending_block_tree}")
+    #print(f"\t\t\t\tCURRENT PENDING_BLOCK_TREE:{pending_block_tree}")
 
 
 def process_qc(qc):
@@ -183,8 +183,7 @@ def process_qc(qc):
 
     if qc.ledger_commit_info.commit_state_id and (qc.vote_info.parent_id not in Ledger.commits):
         # included additional check to prevent committing an already committed block
-        print(
-            f"{Safety.validator_id}: Committing block cmd,round: {pending_block_tree[qc.vote_info.parent_id].block.payload,qc.vote_info.parent_round}")
+        #print(f"{Safety.validator_id}: Committing block cmd,round: {pending_block_tree[qc.vote_info.parent_id].block.payload,qc.vote_info.parent_round}")
         committed_request = Ledger.commit(qc.vote_info.parent_id)
         try:
             # remove pending request from mempool

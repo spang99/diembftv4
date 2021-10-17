@@ -6,13 +6,14 @@ import Safety
 import MemPool
 import PaceMaker
 import Ledger
+from time import sleep
 
 config(channel='fifo', clock='Lamport')
 
 
 class Validator(process):
     def setup(validators: set, exit_cnt: int, config):
-        output("Setting up validator")
+        #output("Setting up validator")
         Safety.set_private_key(config['private_key'])
         Safety.set_public_keys(config['public_keys'])
         Safety.validator_id = str(self)
@@ -26,6 +27,7 @@ class Validator(process):
         self.run_done = False
         self.round_start = False
         self.round_stop = False
+        self.faulty = config['faulty']
 
     # sends a message to another validator
 
@@ -38,7 +40,7 @@ class Validator(process):
         reqid = int(cmd.split('-')[1])
         client = MemPool.clients[client_str]
         MemPool.cache_reply(cmd, result)
-        output(f"Sending reply to {client} for {cmd}")
+        #output(f"Sending reply to {client} for {cmd}")
         send(('Reply', (reqid, result)), to=client)
 
     def process_certificate_qc(qc):
@@ -54,8 +56,11 @@ class Validator(process):
         LeaderElection.update_leaders(qc)
         if PaceMaker.advance_round_qc(qc):
             round_stop = True
+            output(f"Stopping round because of qc.")
             if len(MemPool.pending_requests) > 0:
                 # start new round timer
+                output(
+                    f"Starting round {PaceMaker.current_round} timer because of pending request.")
                 round_start = True
 
     def process_proposal_msg(P, sender):
@@ -97,12 +102,16 @@ class Validator(process):
         tc, M = PaceMaker.process_remote_timeout(M)
         if tc:
             if PaceMaker.advance_round_tc(tc):
+                output(f"Advancing, but not starting, round because of tc.")
                 round_stop = True
                 if len(MemPool.pending_requests) > 0:
+                    output(
+                        f"Starting round {PaceMaker.current_round} timer because of pending request.")
                     round_start = True
             process_new_round_event(tc)
         elif M:
             round_stop = True
+            output("Stopping round due to bracha timeout.")
             send(("TimeoutMsg", M), to=validators)
 
     def process_vote_msg(M):
@@ -122,22 +131,31 @@ class Validator(process):
             if len(MemPool.pending_requests) == 0:
                 # No pending requests (pending = submitted but not yet proposed or committed)
                 # wait for requests to come in
-                output(
-                    "Waiting for requests/transactions to be submitted by clients...")
-                - - wait_for_requests
+
+                #output("Waiting for requests/transactions to be submitted by clients...")
+                -- wait_for_requests
                 await(len(MemPool.pending_requests) > 0 or MemPool.progress_pending_cmd or run_done)
+                # await(len(MemPool.pending_requests) > 0 or run_done)
             if run_done:
-                output("Exiting")
+                # output("Exiting")
                 return
             MemPool.progress_pending_cmd = False
             # print(f"\tGenerating proposal block. {str(self)}")
-            output(f"Request pool: {MemPool.request_pool}")
+            #output(f"Request pool: {MemPool.request_pool}")
             b = BlockTree.generate_block(
                 MemPool.get_transactions(), PaceMaker.current_round)
             # print(f"\tProposal block: {b.author,b.round,b.qc}. {str(self)}")
             P = BlockTree.ProposalMsg(b, last_tc, BlockTree.high_commit_qc)
             # should send itself the proposal as well
-            output(f"Proposing cmd: {P.block.payload}")
+            #output(f"Proposing cmd: {P.block.payload}")
+
+            # simulate faulty leader
+            if faulty:
+                output(
+                    f"SLEEPING WHEN I SHOULD BE DOING SENDING BLOCK FOR ROUND: {PaceMaker.current_round}")
+                sleep(8)
+                faulty = False
+
             send(("ProposalMsg", P), to=validators.union({self}))
 
     def receive(msg=("ProposalMsg", P), from_=sender):
@@ -153,12 +171,16 @@ class Validator(process):
         PaceMaker.local_timeout_round()
 
     def receive(msg=('Request', req), from_=sender):
-        output(f"Received request from {sender}.")
+        #output(f"Received request from {sender}.")
         Reply = MemPool.add_request(req)
         if Reply:
             # request already committed, send cached response
             output("Request already committed, sending cached response.")
             send(('Reply', Reply), to=req.client)
+        else:
+            if round_stop == True and round_start == False:
+                round_stop = False
+                round_start = True
 
     def receive(msg=('RunDone',), from_=p):
         run_done = True
@@ -173,10 +195,11 @@ class Validator(process):
                 if run_done:
                     break
                 pass
+            output(f"Round {PaceMaker.current_round} started.")
             round_start = False
             timer_duration = PaceMaker.get_round_timer(PaceMaker.current_round)
             if await(round_stop):
-                #output(f"\tROUND DONE")
+                output(f"Round {PaceMaker.current_round} stopped.")
                 pass
             elif timeout(timer_duration):
                 output(f"Timing out in round {PaceMaker.current_round}")
