@@ -16,7 +16,7 @@ def main():
     client_private_key = SigningKey.generate()
     client_workload = Client.Workload(7, 2, False)
     client_config = {}
-    client_config['client_name'] = 'Client_0'
+    client_config['client_name'] = 'Client_1'
     client_config['f'] = 1
     client_config['private_key'] = client_private_key
     client_config['validators'] = validators
@@ -28,7 +28,7 @@ def main():
     client3_private_key = SigningKey.generate()
     client3_workload = Client.Workload(4, 2, False)
     client3_config = {}
-    client3_config['client_name'] = 'Client_1'
+    client3_config['client_name'] = 'Client_3'
     client3_config['f'] = 1
     client3_config['private_key'] = client_private_key
     client3_config['validators'] = validators
