@@ -1,10 +1,14 @@
-import random
+import BlockTree
 import Ledger
 import PaceMaker
-import Validator
-import BlockTree
 import Safety
+import Validator
+import random
 
+# PSEUDOCODE(validators;
+# window_size;
+# exclude_size;
+# reputation_leaders;)
 validators = None
 window_size = None
 exclude_size = None
@@ -20,62 +24,80 @@ def setup_LeaderElection():
 
 
 def elect_reputation_leader(qc):
-    #print(f"{Safety.validator_id}: In function: LeaderElection.elect_reputation_leader")
+    # print(f"{Safety.validator_id}: In function: LeaderElection.elect_reputation_leader")
     global window_size, exclude_size
+    # PSEUDOCODE(active_validators <- Empty Set)
     active_validators = []
+    # PSEUDOCODE(last_authors <- Empty Set)
     last_authors = []
+    # PSEUDOCODE(current_qc <- qc)
     current_qc = qc
     i = 0
+    # PSEUDOCODE(for i = 0; i < window_size or |last_authors| < exclude_size; i <- i + 1 do)
     while i < window_size or len(last_authors) < exclude_size:
+        # PSEUDOCODE(current_block < - Ledger.committed_block(current_qc.vote_info.parent_id))
         current_block = Ledger.committed_block(current_qc.vote_info.parent_id)
+        # PSEUDOCODE(block_author < - current_block.author)
         block_author = current_block.author
+        # PSEUDOCODE(if i < window_size then)
         if i < window_size:
-            # signers is a set of validator ids
-            #print(f"{Safety.validator_id}: Getting signers. qc:{qc.vote_info.round}")
+            # print(f"{Safety.validator_id}: Getting signers. qc:{qc.vote_info.round}")
+            # PSEUDOCODE(active_validators <- active_validators union current_qc.signatures.signers())
             for signer in current_qc.signers():
                 active_validators.append(signer)
+        # PSEUDOCODE(if |last_authors| < exclude_size then)
         if len(last_authors) < exclude_size:
-            # see safety validator id
+            # PSEUDOCODE(last_authors <- lastauthors union {block_author})
             last_authors.append(Safety.validator_map[block_author])
+        # PSEUDOCODE(current_qc <- current_block.qc)
         current_qc = current_block.qc
-        # backslash means complement set, make sure both are sets
-        #active_validators -= last_authors
-        #print(f"{Safety.validator_id}: active:{active_validators},authors:{last_authors}. {Safety.validator_id}")
+        # active_validators -= last_authors
+        # print(f"{Safety.validator_id}: active:{active_validators},authors:{last_authors}. {Safety.validator_id}")
+        # PSEUDOCODE(active_validators <- active_validators \ last_authors)
         for author in last_authors:
             try:
                 active_validators.remove(author)
                 # last_authors.remove(author)
             except:
-                #print(f"Error removing. {Safety.validator_id}")
+                # print(f"Error removing. {Safety.validator_id}")
                 pass  # this exception will happen when you try to remove an author you already removed
         i += 1
+    # PSEUDOCODE(return active_validators.pick_one(seed <- qc.vote_info_round))
     random.seed(qc.vote_info.round)
     # return active_validators.random.choice()
-    index = random.randint(0, len(active_validators)-1)
+    index = random.randint(0, len(active_validators) - 1)
     return active_validators[index]
 
 
 def update_leaders(qc):
-    #print(f"{Safety.validator_id}: In function: LeaderElection.update_leaders.")
+    # print(f"{Safety.validator_id}: In function: LeaderElection.update_leaders.")
     # if round is 4 or less, don't call elect_reputation_leaders as you don't have enough
     # voting history to generate a leader
+    # PSEUDOCODE(current_round <- PaceMaker.current_round)
     current_round = PaceMaker.current_round
     if PaceMaker.current_round <= 4:
         return
     global reputation_leaders
+    # PSEUDOCODE(extended_round <- qc.vote_info.parent_round)
     extended_round = qc.vote_info.parent_round
+    # PSEUDOCODE(qc_round <- qc.vote_info.round)
     qc_round = qc.vote_info.round
     if extended_round == None and qc_round == 0:
         # this was the genesis qc, skip
         print("update leader genesis qc")
         return
+    # PSEUDOCODE(if extended_round + 1 = qc_round and qc_round + 1 = current_round then)
     if (extended_round + 1 == qc_round) and (qc_round + 1 == current_round):
+        # PSEUDOCODE(reputation_leaders[current_round + 1] <- elect_reputation_leader(qc))
         reputation_leaders[current_round + 1] = elect_reputation_leader(qc)
 
 
 def get_leader(rnd):
     global validators, reputation_leaders
-    #print(f"{Safety.validator_id}: In function: LeaderElection.get_leader")
+    # print(f"{Safety.validator_id}: In function: LeaderElection.get_leader")
+    # PSEUDOCODE(if (round, leader) in reputation_leaders then)
     if rnd in reputation_leaders:
+        # PSEUDOCODE(return leader)
         return reputation_leaders[rnd]
+    # PSEUDOCODE(return validators[[round/2] mod |validators|])
     return validators[(rnd // 2) % len(validators)]

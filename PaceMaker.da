@@ -1,10 +1,12 @@
-import time
 import BlockTree
 import Safety
 import Validator
+import time
 from collections import defaultdict
 
-
+# #PSUEDOCODE(current_round;
+# last_round_tc;
+# pending_timeouts;)
 current_round = 1
 last_round_tc = None
 pending_timeouts = defaultdict(list)
@@ -12,40 +14,47 @@ delta = 1
 
 
 def get_round_timer(r):
-    #print(f"{Safety.validator_id}: In function: PaceMaker.get_round_timer")
-    # need to figure out formula
+    # print(f"{Safety.validator_id}: In function: PaceMaker.get_round_timer")
+    # #PSUEDOCODE(return round timer formula)
     return 4 * delta
 
 
 def start_timer(new_round):
-    #print(f"{Safety.validator_id}: In function: PaceMaker.start_timer")
+    # print(f"{Safety.validator_id}: In function: PaceMaker.start_timer")
     global current_round
+    #  #PSUEDOCODE(stop_timer(current_round))
     stop_timer(current_round)
+    # #PSUEDOCODE(current_round <- new_round)
     current_round = new_round
-    #print(f"{Safety.validator_id}: Timer started for round: {current_round}")
-    # start local timer for round current round for duration get round timer(current round)
-    # time_started = time.perf_counter()
+    # print(f"{Safety.validator_id}: Timer started for round: {current_round}")
 
 
 def local_timeout_round():
     global current_round
-    #print(f"{Safety.validator_id}: In function: PaceMaker.local_timeout_round")
+    # print(f"{Safety.validator_id}: In function: PaceMaker.local_timeout_round")
+    # #PSUEDOCODE(save_consensus_state())
     save_consensus_state()
+    # #PSUEDOCODE(timout_info <- Safety.make_timeout(current_round, Block-Tree.high_qc, last_round_tc))
     timeout_info = Safety.make_timeout(
         current_round, BlockTree.high_qc, last_round_tc)
-    #broadcast(BlockTree.TimeoutMsg(timeout_info,last_round_tc, BlockTree.high_commit_qc))
+    # #PSUEDOCODE(broadcast TimeoutMsg(timeout_info, last_round_tc, Block-Tree.high_commit_qc))
     # Can't actually send message from here, instead return it to validator and send it from there
     return BlockTree.TimeoutMsg(timeout_info, last_round_tc, BlockTree.high_commit_qc)
 
 
 def process_remote_timeout(tmo):
     # tmo is a timeout message
-    #print(f"{Safety.validator_id}: In function: PaceMaker.process_remote_timeout. {Safety.validator_id}")
+    # print(f"{Safety.validator_id}: In function: PaceMaker.process_remote_timeout. {Safety.validator_id}")
     global current_round, pending_timeouts
+    # #PSUEDOCODE(tmo_info <- tmo.tmo_info)
     tmo_info = tmo.tmo_info
+    # #PSUEDOCODE(if tmo_info.round < current_round then)
     if tmo_info.round < current_round:
+        # #PSUEDOCODE(return None)
         return None, None
+    # #PSUEDOCODE(if tmo_info.sender not in pending_timeouts[tmo_info_round].senders then)
     if len(pending_timeouts[tmo_info.round]) == 0:
+        # #PSUEDOCODE(pending_timeouts[tmo_info.round] <- pending_timeouts[tmo_info.round] union {tmo.info})
         pending_timeouts[tmo_info.round].append(tmo_info)
         return None, None
     try:
@@ -55,13 +64,18 @@ def process_remote_timeout(tmo):
     if tmo_info.sender not in senders:
         pending_timeouts[tmo_info.round].append(tmo_info)
 
-    # if len(pending_timeouts[tmo_info.round].senders) == BlockTree.f + 1:
+    # #PSUEDOCODE(if |pending_timeouts[tmo_info.round].senders| == f + 1 then)
     if len(pending_timeouts[tmo_info.round]) == BlockTree.f + 1:
+        # #PSUEDOCODE(stop_timer(current_round))
         stop_timer(current_round)
-        # local_timeout_round()  # bracha timeout
+        # #PSUEDOCODE(local_timeout_round())
         return None, local_timeout_round()
-    # if len(pending_timeouts[tmo_info.round].senders) == 2 * BlockTree.f + 1:
+    # #PSUEDOCODE(if |pending_timeouts[tmo_info.round].senders| == 2f + 1 then)
     if len(pending_timeouts[tmo_info.round]) == 2 * BlockTree.f + 1:
+        # #PSUEDOCODE(return TC(
+        #     round <- tmo_info.round,
+        #     tmo_high_qc_rounds <- {t.high_qc.round | t in pending_timeouts[tmo_info.round]},
+        #     signatures <- {t.signature | t in pending_timeouts[tmo_info.round]}))
         high_qc_rounds = []
         for info in pending_timeouts[tmo_info.round]:
             high_qc_rounds.append(info.high_qc.vote_info.round)
@@ -69,36 +83,45 @@ def process_remote_timeout(tmo):
         for info in pending_timeouts[tmo_info.round]:
             signatures.append((info.sender, info.signature))
         return BlockTree.TC(tmo_info.round, high_qc_rounds, signatures), None
+    # #PSUEDOCODE(return None)
     return None, None
 
 
 def stop_timer(r):
-    # global time_stopped
-    #print(f"{Safety.validator_id}: In function: PaceMaker.stop_timer")
-    # time_stopped = time.perf_counter()
+    # print(f"{Safety.validator_id}: In function: PaceMaker.stop_timer")
     pass
 
 
 def advance_round_tc(tc):
-    #print(f"{Safety.validator_id}: In function: PaceMaker.advance_round_tc. {Safety.validator_id}")
+    # print(f"{Safety.validator_id}: In function: PaceMaker.advance_round_tc. {Safety.validator_id}")
     global current_round, last_round_tc
+    # #PSUEDOCODE(if tc = None or tc.round < current_round then)
     if tc is None or tc.round < current_round:
+        # #PSUEDOCODE(return false)
         return False
+    # #PSUEDOCODE(last_round_tc <- tc)
     last_round_tc = tc
+    # #PSUEDOCODE(start_timer(tc.round + 1))
     start_timer(tc.round + 1)
+    # #PSUEDOCODE(return true)
     return True
 
 
 def save_consensus_state():
-    #print(f"{Safety.validator_id}: In function: PaceMaker.save_consensus_state")
+    # print(f"{Safety.validator_id}: In function: PaceMaker.save_consensus_state")
     pass
 
 
 def advance_round_qc(qc):
     global current_round, last_round_tc
-    #print(f"{Safety.validator_id}: In function: PaceMaker.advance_round_qc")
+    # print(f"{Safety.validator_id}: In function: PaceMaker.advance_round_qc")
+    #  if qc.vote_info.round < current_round then
     if qc.vote_info.round < current_round:
+        # return false
         return False
+    # last_round_tc <- None
     last_round_tc = None
+    # start_timer(qc.vote_info.round + 1)
     start_timer(qc.vote_info.round + 1)
+    # return true
     return True

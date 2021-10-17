@@ -1,7 +1,7 @@
-import Ledger
-import nacl.hash
 import BlockTree
+import Ledger
 import Safety  # to get validator id for logging
+import nacl.hash
 from nacl.exceptions import BadSignatureError
 from nacl.signing import SigningKey
 from nacl.signing import VerifyKey
@@ -9,17 +9,20 @@ from nacl.signing import VerifyKey
 # SAFETY: PRIVATE
 
 # these get assigned during process setup
+# PSEUDOCODE(private_key;)
 _private_key = None
+# PSEUDOCODE(public_keys;)
 _public_keys = None
-
 
 f = None
 validator_id = None
 validators = None
 validator_map = None
 
+# PSEUDOCODE(highest_vote_round;)
 highest_vote_round = 0  # initially 0
-highest_qc_round = 0    # initially 0 (genesis QC)
+# PSEUDOCODE(highest_qc_round;)
+highest_qc_round = 0  # initially 0 (genesis QC)
 
 
 # set process private key (called during setup)
@@ -49,66 +52,81 @@ def get_public_key(val):
 
 # set process validator_id (called during setup)
 # def set_validator_id(id):
-    #global _validator_id
-    #_validator_id = id
+# global _validator_id
+# _validator_id = id
 
 
 def _increase_highest_vote_round(round):
     # commit not to vote in rounds lower than round
     global highest_vote_round
+    # PSEUDOCODE(highest_vote_round <- max{round, highest_vote_round})
     highest_vote_round = max(round, highest_vote_round)
 
 
 def _update_highest_qc_round(qc_round):
     global highest_qc_round
+    # PSEUDOCODE(highest_qc_round <- max{qc_round, highest_qc_round})
     highest_qc_round = max(qc_round, highest_qc_round)
 
 
 def _consecutive(block_round, round):
-    #print(f"{Safety.validator_id}: Inside Safety._consecutive.")
+    # print(f"{Safety.validator_id}: Inside Safety._consecutive.")
+    # PSEUDOCODE(return round + 1 = block_round)
     return round + 1 == block_round
 
 
 def _safe_to_extend(block_round, qc_round, tc):
-    #print(f"{Safety.validator_id}: Inside Safety._safe_to_extend")
+    # print(f"{Safety.validator_id}: Inside Safety._safe_to_extend")
     if tc == None:
         print("Discarding message: No TC")
         return False
+    # PSEUDOCODE(return consecutive(block_round, tc.round) and qc_round >= max{tc.tmo_high_qc_rounds})
     return _consecutive(block_round, tc.round) and (qc_round >= max(tc.tmo_high_qc_rounds))
 
 
 def _safe_to_vote(block_round, qc_round, tc):
-    #print(f"{Safety.validator_id}: Inside Safety._safe_to_vote. Block Round:{block_round},QC Round:{qc_round}")
+    # print(f"{Safety.validator_id}: Inside Safety._safe_to_vote. Block Round:{block_round},QC Round:{qc_round}")
 
     global highest_vote_round
+    #  PSEUDOCODE(if block_round <= max{highest_vote_round, qc_round} then)
     if block_round <= max(highest_vote_round, qc_round):
         # 1. must vote in monotonically increasing rounds
         # 2. must extend a smaller round
+        # PSEUDOCODE(return false)
         return False
+    # PSEUDOCODE(return consecutive(block_round, qc_round) or safe_to_extend(block_round, qc_round, tc))
     return _consecutive(block_round, qc_round) or _safe_to_extend(block_round, qc_round, tc)
 
 
 def _safe_to_timeout(round, qc_round, tc):
-    #print(f"{Safety.validator_id}: Inside Safety_safe_to_timeout.")
+    # print(f"{Safety.validator_id}: Inside Safety_safe_to_timeout.")
     global highest_qc_round, highest_vote_round
+    # PSEUDOCODE(if qc_round < highest_qc_round or round <=max{hightest_vote_round - 1, qc_round} then)
     if (qc_round < highest_qc_round) or (round <= max(highest_vote_round - 1, qc_round)):
         # respect highest_qc_round and don't timeout in a past round
-        print(f"{Safety.validator_id}: CANT TIMEOUT IN PAST ROUND => rnd:{round},qcrnd:{qc_round},highest_qc_round{highest_qc_round},highestvoteround:{highest_vote_round}")
+        print(
+            f"{Safety.validator_id}: CANT TIMEOUT IN PAST ROUND => rnd:{round},qcrnd:{qc_round},highest_qc_round{highest_qc_round},highestvoteround:{highest_vote_round}")
+        # PSEUDOCODE(return false)
         return False
+    # PSEUDOCODE(return consecutive(round, qc_round) or consecutive(round, tc.round))
     return _consecutive(round, qc_round) or _consecutive(round, tc.round)
 
 
 def _commit_state_id_candidate(block_round, qc):
     # find the commited id in case a qc is formed in the vote round
+    # PSEUDOCODE(if consecutive(block_round, qc.vote_info_round) then)
     if _consecutive(block_round, qc.vote_info.round):
         # Should we add check here to make sure we don't return a commitstateid for genesis qc?
+        # PSEUDOCODE(return Ledger.pending_state(qc.id))
         return Ledger.pending_state(qc.vote_info.id)
+    # PSEUDOCODE(else
+    #     return None)
     else:
         return None
 
 
 def _valid_signature(key, signature):
-    #print(f"Inside Safety._valid_signature. {Safety.validator_id}")
+    # print(f"Inside Safety._valid_signature. {Safety.validator_id}")
     try:
         valid_signature = key.verify(signature)
     except BadSignatureError:
@@ -124,7 +142,7 @@ def _valid_signatures_make_vote(b, last_tc):
 
 def _valid_signatures(qc, last_tc):
     # perform signature checking
-    #print(f"Inside Safety._valid_signatures. {Safety.validator_id}")
+    # print(f"Inside Safety._valid_signatures. {Safety.validator_id}")
     global f, _validator_id
 
     if last_tc:
@@ -175,24 +193,34 @@ def _valid_signatures(qc, last_tc):
 def make_vote(b, last_tc):
     # b is the block to vote on
     # last_tc is the timeout certificate for the previous round, else ⊥
-    #print(f"{Safety.validator_id}: Inside Safety.make_vote.")
-
+    # print(f"{Safety.validator_id}: Inside Safety.make_vote.")
+    # PSEUDOCODE(qc_round <- b.qc.vote_info_round)
     qc_round = b.qc.vote_info.round
+    # PSEUDOCODE(if valid_signatures(b,  last_tc) and safe_to_vote(b.round, qc_round, last_tc) then)
     if _valid_signatures_make_vote(b, last_tc) and _safe_to_vote(b.round, qc_round, last_tc):
+        # PSEUDOCODE(update_highest_qc_round(qc_round))
         _update_highest_qc_round(qc_round)
+        # PSEUDOCODE(increase_highest_vote_round(b.round))
         _increase_highest_vote_round(b.round)
         exec_state_id = Ledger.pending_state(b.id)
+        # PSEUDOCODE(vote_info <- VoteInfo(
+        #     (id, round) <- (b.id, b.round)
+        #     (parent_id, parent_round) <- (b.qc_vote_info.id, qc_round)
+        #     exec_state_id <- Ledger.pending_state(b.id)))
         vote_info = BlockTree.VoteInfo(id=b.id, round=b.round, parent_id=b.qc.vote_info.id, parent_round=qc_round,
                                        exec_state_id=exec_state_id)
 
         vote_info_hash = nacl.hash.sha256((str(b.id) + str(b.round) + "-" +
                                            str(b.qc.vote_info.id) + str(qc_round) + "-" + exec_state_id).encode(),
                                           nacl.encoding.HexEncoder).decode()
-
+        # PSEUDOCODE(ledger_commit_info <- LedgerCommitInfo(
+        #     commit_state_id <- commit_state_id_candidate(b.round, b.qc)
+        #     vote_info_hash <- hash(vote_info)))
         ledger_commit_info = BlockTree.LedgerCommitInfo(commit_state_id=_commit_state_id_candidate(
             b.round, b.qc), vote_info_hash=vote_info_hash)
 
         return BlockTree.VoteMsg(vote_info, ledger_commit_info, BlockTree.high_commit_qc)
+    # PSEUDOCODE(return None)
     else:
         return None
 
@@ -201,14 +229,19 @@ def make_timeout(round, high_qc, last_tc):
     # Make a TimeoutInfo after a local timeout
 
     global validator_id, _private_key
+    # PSEUDOCODE(qc_round <- high_qc.vote_info.round)
     qc_round = high_qc.vote_info.round
+    #  PSEUDOCODE(if valid_signatures(high_qc, last_tc) and safe_to_timeout(round, qc_round, last_tc) then)
     if _valid_signatures(high_qc, last_tc) and _safe_to_timeout(round, qc_round, last_tc):
+        # PSEUDOCODE(increase_highest_vote_round(round))
         _increase_highest_vote_round(round)  # stop voting for round
         if _private_key == None:  # make sure you have a private key to perform signature
             print(f" {Safety.validator_id}: No private key given.")
             return None
         else:
             signature = _private_key.sign((round, high_qc.vote_info.round))
+        # PSEUDOCODE(return TimeoutInfo(round, high_qc))
         return BlockTree.TimeoutInfo(round, high_qc, validator_id)
+    # PSEUDOCODE(return None)
     else:
         return None

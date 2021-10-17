@@ -11,7 +11,7 @@ Timeouts.  discuss your choice of timeout formulas and timeout values for client
 
 
 Bugs and Limitations.  a list of all known bugs in and limitations of your code.
-
+Crashes sometimes when requests from two different clients are sent at the same time.
 
 Main files:
 diembftv4\Client.da contains the code to initialize the client as well as functions which allow the client to send and receive requests to its validators.
