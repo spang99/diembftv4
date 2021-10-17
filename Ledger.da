@@ -72,7 +72,7 @@ def commit(block_id):
     f.write(block.payload)
     f.close()
     
-    # storing in dictionary for quick retrieval
+    commits[block_id] = block # storing in dictionary for quick retrieval
     commit_queue.append(block) #appending to commit_queue for updating other nodes if they fall back
     #deelete element from commit queue and commits for efficient memory usage
     if (len(commit_queue) > q_size):
