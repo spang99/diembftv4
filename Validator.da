@@ -1,4 +1,3 @@
-# change definition of send messages everywhere
 import sys
 import BlockTree
 import LeaderElection
@@ -43,17 +42,23 @@ class Validator(process):
         #output(f"Sending reply to {client} for {cmd}")
         send(('Reply', (reqid, result)), to=client)
 
+    # PSUEDOCODE: Procedure process_certificate_qc(qc)
     def process_certificate_qc(qc):
         if qc == None:
             #output("Empty qc")
             return
         # output(f'In function: process_certificate_qc.')
+
+        # PSUEDOCODE: Block-Tree.process_qc(qc)
         committed_request = BlockTree.process_qc(qc)
         if committed_request:
             # send reply to the client
             send_reply(committed_request)
 
+        # PSUEDOCODE: LeaderElection.update_leaders(qc)
         LeaderElection.update_leaders(qc)
+
+        # PSUEDOCODE: PaceMaker.advance_round(qc.vote_info.round)
         if PaceMaker.advance_round_qc(qc):
             round_stop = True
             output(f"Stopping round because of qc.")
@@ -63,44 +68,77 @@ class Validator(process):
                     f"Starting round {PaceMaker.current_round} timer because of pending request.")
                 round_start = True
 
+    # PSUEDOCODE: Procedure process_proposal_msg(P)
     def process_proposal_msg(P, sender):
         # output('In function: process_proposal_msg.')
         # remove the request from your request pool so you don't propose it again
         MemPool.remove_from_requests(P.block.payload)
         MemPool.pending_requests.add(P.block.payload)
 
+        # PSUEDOCODE: process_certificate_qc(P.block.qc)
         process_certificate_qc(P.block.qc)
+
+        # PSUEDOCODE: process_certificate_cq(P.high_commit_qc)
         process_certificate_qc(P.high_commit_qc)
+
+        # PSUEDOCODE: PaceMaker.advance_round_tc(P.last_round_tc)
         if PaceMaker.advance_round_tc(P.last_round_tc):
             round_stop = True
             if len(MemPool.pending_requests) > 0:
                 round_start = True
+
+        # PSUEDOCODE: round <- PaceMaker.current_round
         current_round = PaceMaker.current_round
+
+        # PSUEDOCODE: leader <- LeaderElection.get_leader(current_round)
         leader = LeaderElection.get_leader(current_round)
+
+        # PSUEDOCODE: if P.block.round != round or P.sender != leader or P.block.author != leader then
+        #               return
         if (P.block.round != current_round) or (sender != leader) or (P.block.author != str(leader)):
             output("Error here")
             print(P.block.round, current_round, str(leader),
                   str(sender), P.block.author, leader)
             return
+
+        # PSUEDOCODE: Block-Tree.execute_and_insert(P)
         BlockTree.execute_and_insert(P.block)
+
+        # PSUEDOCODE: vote_msg < - Safety.make_vote(P.block, P.last_round_tc)
         vote_msg = Safety.make_vote(P.block, P.last_round_tc)
+
+        # PSUEDOCODE: if vote_msg != None then
         if vote_msg != None:
             #output(f"Sending vote to leader of round {current_round+1}: {LeaderElection.get_leader(current_round+1)}.")
+
+            # PSUEDOCODE: send vote_msg to LeaderElection.get_leader(current_round + 1)
             send(("VoteMsg", vote_msg),
                  to=LeaderElection.get_leader(current_round + 1))
         else:
             output(f"Empty vote message.")
 
+    # PSUEDOCODE: Procedure process_timeout_msg(M)
     def process_timeout_msg(M):
         # output('In function: process_timeout_msg')
+
+        # PSUEDOCODE: process_certificate_qc(M.tmo_info.high_qc)
         process_certificate_qc(M.tmo_info.high_qc)
+
+        # PSUEDOCODE: process_certificate_qc(M.high_commit_qc)
         process_certificate_qc(M.high_commit_qc)
+
+        # PSUEDOCODE: PaceMaker.advance_round_tc(M.last_round_tc)
         if PaceMaker.advance_round_tc(M.last_round_tc):
             round_stop = True
             if len(MemPool.pending_requests) > 0:
                 round_start = True
+
+        # PSUEDOCODE: tc <- PaceMaker.process_remote_timeout(M)
         tc, M = PaceMaker.process_remote_timeout(M)
+
+        # PSUEDOCODE: if tc != None then
         if tc:
+            # PSUEDOCODE: PaceMaker.advance_round(tc)
             if PaceMaker.advance_round_tc(tc):
                 output(f"Advancing, but not starting, round because of tc.")
                 round_stop = True
@@ -108,25 +146,38 @@ class Validator(process):
                     output(
                         f"Starting round {PaceMaker.current_round} timer because of pending request.")
                     round_start = True
+
+            # PSUEDOCODE: process_new_round_event(tc)
             process_new_round_event(tc)
         elif M:
             round_stop = True
             output("Stopping round due to bracha timeout.")
             send(("TimeoutMsg", M), to=validators)
 
+    # PSUEDOCODE: Procedure process_vote_msg(M)
     def process_vote_msg(M):
         # output(f'In function: process_vote_msg.')
+
+        # PSUEDOCODE: qc <- Block-Tree.process_vote(M)
         qc = BlockTree.process_vote(M)
+
+        # PSUEDOCODE: if qc != None then
         if qc is not None:
+            # PSUEDOCODE: process_certificate_qc(qc)
             process_certificate_qc(qc)
+
+            # PSUEDOCODE: process_new_round_event(None)
             process_new_round_event(None)
 
+    # PSUEDOCODE: Procedure process_new_round_event(last_tc)
     def process_new_round_event(last_tc):
         # output(f'In function: process_new_round_event.')
         current_round = PaceMaker.current_round
-        leader = LeaderElection.get_leader(PaceMaker.current_round)
+
         #output(f"The leader for round {current_round} is {leader}")
-        if self == leader:
+
+        # PSUEDOCODE: if u = LeaderElection.get_leader(PaceMaker.current_round) then
+        if self == LeaderElection.get_leader(PaceMaker.current_round):
             # if no pending transactions, don't propose empty blocks, but rather wait for requests to come in
             if len(MemPool.pending_requests) == 0:
                 # No pending requests (pending = submitted but not yet proposed or committed)
@@ -137,17 +188,15 @@ class Validator(process):
                 await(len(MemPool.pending_requests) > 0 or MemPool.progress_pending_cmd or run_done)
                 # await(len(MemPool.pending_requests) > 0 or run_done)
             if run_done:
-                # output("Exiting")
+                # allow validator to exit
                 return
             MemPool.progress_pending_cmd = False
-            # print(f"\tGenerating proposal block. {str(self)}")
-            #output(f"Request pool: {MemPool.request_pool}")
+
+            # PSUEDOCODE: b <- Block-Tree.generate_block(MemPool.get_transaction(), PaceMaker.current_round)
             b = BlockTree.generate_block(
                 MemPool.get_transactions(), PaceMaker.current_round)
-            # print(f"\tProposal block: {b.author,b.round,b.qc}. {str(self)}")
+
             P = BlockTree.ProposalMsg(b, last_tc, BlockTree.high_commit_qc)
-            # should send itself the proposal as well
-            #output(f"Proposing cmd: {P.block.payload}")
 
             # simulate faulty leader
             if faulty:
@@ -156,17 +205,23 @@ class Validator(process):
                 sleep(8)
                 faulty = False
 
+            # should send itself the proposal as well
+            # PSUEDOCODE: broadcast ProposalMsg(b, last_tc, Block - Tree.high_commit_qc)
             send(("ProposalMsg", P), to=validators.union({self}))
 
+    # PSUEDOCODE: if M is a proposal message then process_proposal_msg(M)
     def receive(msg=("ProposalMsg", P), from_=sender):
         process_proposal_msg(P, sender)
 
+    # PSUEDOCODE: if M is a timeout message then process_timeout_message(M)
     def receive(msg=("TimeoutMsg", M), from_=sender):
         process_timeout_msg(M)
 
+    # PSUEDOCODE: if M is a vote message then process_vote_msg(M)
     def receive(msg=("VoteMsg", M), from_=sender):
         process_vote_msg(M)
 
+    # PSUEDOCODE: if M is a local timeout then Pacemaker.local_timeout_round()
     def receive(msg=("LocalTimeout", M), from_=sender):
         PaceMaker.local_timeout_round()
 
