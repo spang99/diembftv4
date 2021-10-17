@@ -1,5 +1,5 @@
 import nacl.hash
-from datetime import datetime
+import datetime
 from nacl.signing import SigningKey
 from nacl.signing import VerifyKey
 from time import sleep
@@ -29,15 +29,20 @@ class Client(process):
         output("Setting up client")
         # setup the client
         # config is a dictionary with config information
+        self.client_name = config['client_name']
         self.work_load = config["workload"]
         self.validators = config["validators"]
         self.private_key = config['private_key']
         self.replies = {}
         self.f = config['f']  # faulty validators
         self.timeout = config['timeout']  # wait for 2f+1 replies
+        self.log_path = self.client_name + '.log'
+        file = open(self.log_path, "w")
+        file.close()
 
     def receive(msg=('Reply', (reqid, result)), from_=p):
         # print(f"Received reply from {p} for RequestID: {reqid}")
+        self.client_log("Received Reply:", f"sender: {p}, reqid: {reqid}, result: {result}")
         if reqid in replies:
             replies[reqid].append(result)
         else:
@@ -56,6 +61,8 @@ class Client(process):
             # output(f"Sending request to validators:{validators}")
             output("Sending request to validators.")
             send(('Request', req), to=validators)
+            self.client_log("Sent Request:",
+                       f"recipients: {validators}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
             replies[i] = []
             -- reply
             # limitation: doesn't make sure replies are from unique validators
@@ -68,6 +75,8 @@ class Client(process):
                     # retransmit request
                     output(f"retransmitting {cmd} due to timeout")
                     send(('Request', req), to=validators)
+                    self.client_log("Sent Request:",
+                               f"recipients: {validators}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
 
         output(f"Finished workload and exiting")
         # in main, you can use await(each(c in clients, has=received(('finished_workload',), from_=c)))
@@ -76,3 +85,11 @@ class Client(process):
         # sleep a couple of seconds to allow receival of validator replies (to prevent transport exception)
         sleep(2)
         send(('finished_workload',), to=nodeof(self))
+        self.client_log("Sent finished_workload:", f"recipients: {nodeof(self)}")
+
+    def client_log(type, content_str):
+        # initial settings, generated seeds, message content received, message sent content, timeouts, committed blocks, timestamp
+        file = open(self.log_path, "a")
+        log_str = datetime.datetime.now().strftime("%H:%M:%S") + " " + str(type) + " " + str(content_str) + '\n'
+        file.write(log_str)
+        file.close()

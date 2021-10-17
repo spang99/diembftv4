@@ -1,6 +1,7 @@
 import BlockTree
 import Ledger
 import Safety  # to get validator id for logging
+import datetime
 import nacl.hash
 from nacl.exceptions import BadSignatureError
 from nacl.signing import SigningKey
@@ -19,6 +20,8 @@ validator_id = None
 validator_name = None
 validators = None
 validator_map = None
+log_path = None
+# log_file = None
 
 # PSEUDOCODE(highest_vote_round;)
 highest_vote_round = 0  # initially 0
@@ -246,3 +249,10 @@ def make_timeout(round, high_qc, last_tc):
     # PSEUDOCODE(return None)
     else:
         return None
+
+def log(type, content_str):
+    # initial settings, generated seeds, message content received, message sent content, timeouts, committed blocks, timestamp
+    file = open(log_path, "a")
+    log_str = datetime.datetime.now().strftime("%H:%M:%S") + " " + str(type) + " " + str(content_str) + '\n'
+    file.write(log_str)
+    file.close()

@@ -28,7 +28,7 @@ state_id = {}  # description below:
 def setup_Ledger():
     global u, filename
     u = Safety.validator_id
-    filename = "database" + str(u) + ".txt"
+    filename = "database" + Safety.validator_name + ".txt"
     f = open(filename, 'w+')
     f.close()
     # Add root of speculative ledger tree, corresponding to genesis block
@@ -75,6 +75,7 @@ def commit(block_id):
     f.write(block.payload)
     f.close()
     commits[block_id] = block
+    Safety.log("Committed Block:", f"block_id: {block_id}")
     return block.payload
 
 
