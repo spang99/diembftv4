@@ -115,7 +115,8 @@ class Validator(process):
         if PaceMaker.advance_round_qc(qc):
             round_stop = True
             #output(f"Stopping round because of qc.")
-            Safety.log("Stopping round because of qc.", "")
+            Safety.log(
+                f"Stopping round {PaceMaker.current_round-1} because of qc.", "")
             if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
                 # start new round timer
                 #output(f"Starting round {PaceMaker.current_round} timer because of pending request. {MemPool.pending_requests}, commits:{[x.payload for x in Ledger.commits.values()]}")
@@ -178,6 +179,7 @@ class Validator(process):
             # output(f"Sending vote to leader of round {current_round+1}: {LeaderElection.get_leader(current_round+1)}.")
 
             # PSEUDOCODE: send vote_msg to LeaderElection.get_leader(current_round + 1)
+            Safety.log(f"Sending VoteMsg:", f"{vote_msg}")
             send(("VoteMsg", vote_msg),
                  to=LeaderElection.get_leader(current_round + 1))
         else:
@@ -226,6 +228,7 @@ class Validator(process):
             round_stop = True
             #output("Stopping round due to bracha timeout.")
             Safety.log("Stopping round due to bracha timeout.", "")
+            Safety.log("Sending TimeoutMsg:", f"{M}")
             send(("TimeoutMsg", M), to=validators)
 
     # PSEUDOCODE: Procedure process_vote_msg(M)
@@ -286,6 +289,8 @@ class Validator(process):
 
             # should send itself the proposal as well
             # PSEUDOCODE: broadcast ProposalMsg(b, last_tc, Block - Tree.high_commit_qc)
+            Safety.log(
+                f"Leader of round {PaceMaker.current_round}:", f"Sending Proposal: {P}")
             send(("ProposalMsg", P), to=validators.union({self}))
 
     # PSEUDOCODE: if M is a proposal message then process_proposal_msg(M)
@@ -332,7 +337,8 @@ class Validator(process):
         Reply = MemPool.add_request(req)
         if Reply:
             # request already committed, send cached response
-            output("Request already committed, sending cached response.")
+            Safety.log(
+                "Request already committed, sending cached response.", "")
             send(('Reply', Reply), to=req.client)
         else:
             if round_stop == True and round_start == False:
@@ -366,6 +372,7 @@ class Validator(process):
                 Safety.log("Timing out in round:",
                            f"{PaceMaker.current_round}.")
                 M = PaceMaker.local_timeout_round()
+                Safety.log("Sending TimeoutMsg:", f"{M}")
                 send(("TimeoutMsg", M), to=validators.union({self}))
 
         output(f"Exiting: {Safety.validator_name}")
