@@ -6,7 +6,7 @@ config(channel='fifo', clock='Lamport')
 
 
 def main():
-    run_config = {}
+    configs = []
     config_folder = Path("./config")
     fname = 'config.csv'
     self.path = config_folder / fname
@@ -15,24 +15,34 @@ def main():
                 'faulty_leader_index']
         bools = ['faulty_leader']
         strings = ['test_case_name']
+        separator = '-----'
+        run_config = {}
         workloads = []
         for line in file:
             arguments = line.split('=', 4)
             key = arguments[0].strip()
-            if key == 'client_workloads':
+            if key == separator:
+                run_config['client_workloads'] = workloads
+                configs.append(run_config)
+                run_config = {}
+                workloads = []
+            elif key == 'client_workloads':
+                retransmit = arguments[3].strip() == 'True'
                 workloads.append(
-                    Client.Workload(int(arguments[1].strip()), int(arguments[2].strip()), bool(arguments[3].strip)))
-            if key in ints:
+                    Client.Workload(int(arguments[1].strip()), int(arguments[2].strip()), retransmit))
+            elif key in ints:
                 run_config[key] = int(arguments[1].strip())
             elif key in bools:
-                run_config[key] = bool(arguments[1].strip())
+                run_config[key] =arguments[1].strip() == 'True'
             else:
                 run_config[key] = arguments[1].strip()
         run_config['client_workloads'] = workloads
+        configs.append(run_config)
 
-    run1 = new(Run.Run)
-    setup(run1, (run_config,))
+    for config in configs:
+        run = new(Run.Run)
+        setup(run, (config,))
 
-    start(run1)
-    await(each(r in {run1}, has=received(('finished_test_case',), from_=r)))
-    output(f"Finished all test cases.")
+        start(run)
+        await(each(r in {run}, has=received(('finished_test_case',), from_=r)))
+        output(f"Finished all test cases.")
