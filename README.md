@@ -1,7 +1,7 @@
 # DiemBFT V4
 
 Platform:
-For our implementation, we used pyDistAlgo version 1.1.0b15 and CPython version 3.7. The operating systems used are macOS **\_** and Windows 10. This program is hosted on a laptop.
+For our implementation, we used pyDistAlgo version 1.1.0b15 and CPython version 3.7. The operating systems used are macOS OS 10.14 and Windows 10. This program is hosted on a laptop.
 
 Workload generation. Workload generation consists of a simple Workload class, contained within diembftv4/src/Client.da. The class maintains num_requests, delay, and retransmit attributes. Num_requests simply tells the client how many requests it should send over the course of its lifetime. Delay is how long it should wait between requests (only 1 pending request at a time is allowed), and retransmit is a boolean that tells the client to retransmit a request for which it has already verified committment. These 3 parameters allow us to test a variety of cases and behaviors, ranging from message loss, validator caching, and dry spells in the validator MemPools.
 
