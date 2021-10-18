@@ -5,7 +5,7 @@ For our implementation, we used pyDistAlgo version 1.1.0b15 and CPython version 
 
 
 Workload generation.  describe your design for client workload generation, and mention which file(s) contain the implementation.
-
+Client Workload generation is implemented in Client.da in the Workload class.
 
 Timeouts.  discuss your choice of timeout formulas and timeout values for clients and servers (e.g., in function get_round_timer).
 
@@ -27,7 +27,7 @@ To count the number of lines of code, we used CLOC as suggested in the assignmen
 
 
 Language feature usage:
-List Comprehensions: 0
+List Comprehensions: 
 Dictionary Comprehensions: 0
 Set Comprehensions: 0
 Aggregations: 0
