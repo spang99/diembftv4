@@ -335,7 +335,7 @@ class Validator(process):
 
     def receive(msg=('RunDone',), from_=p):
         run_done = True
-        Safety.log("Received RunDone:", f"sender: {sender}")
+        Safety.log("Received RunDone:", f"sender: {p}")
 
     def run(self):
         output("Starting up...")
