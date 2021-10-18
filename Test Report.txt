@@ -1,15 +1,14 @@
 Test Report
 
 Test Case 1: Testing the normal (happy) scenario
-configuration file:
-Ledger files: Validator_0.log, Validator_1.log, Validator_2.log, Validator_3.log
-log files: diem.log
+configuration file: config.csv
+Ledger files: Normal_Case_database_Validator_0, Normal_Case_database_Validator_1, Normal_Case_database_Validator_2, Normal_Case_database_Validator_3
+log files: Normal_Case_Client_0, Normal_Case_Client_1, Normal_Case_Validator_0.log, Normal_Case_Validator_1.log, Normal_Case_Validator_2.log, Normal_Case_Validator_3.log
 number of replicas: 4
-number of clients: 3
-number of client requests: 7 from first, 4 from second, 1 from third
+number of clients: 2
+number of client requests: 3 from first, 4 from second
 failure scenario: Tested for about 50 times, does not fail
-outcome: Program terminates successfully, files (Database) databses same for all nodes
-other:
+outcome: Program terminates successfully, files (Database) databases same for all nodes
 
 Test Case 2: Testing fault injection and timeout
 configuration file: 
