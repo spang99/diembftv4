@@ -179,6 +179,8 @@ class Validator(process):
     # PSEUDOCODE: Procedure process_vote_msg(M)
     def process_vote_msg(M):
         # output(f'In function: process_vote_msg.')
+        if not Safety._valid_signature(Safety.get_public_key(str(M.sender)), M.signature):
+            output('Not correct signature, Message will not be processed')
 
         # PSEUDOCODE: qc <- Block-Tree.process_vote(M)
         qc = BlockTree.process_vote(M)
