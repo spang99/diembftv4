@@ -13,20 +13,19 @@ outcome: Program terminates successfully, files (Database) databases same for al
 Test Case 2: Sleepy_Leader_Case Testing for when there is a faulty leader and a timeout occurs
 configuration file: config.csv
 Ledger files: Sleepy_Leader_Case_database_Validator_0, Sleepy_Leader_Case_database_Validator_1, Sleepy_Leader_Case_database_Validator_2, Sleepy_Leader_Casedatabase_Validator_3
-log files: Sleepy_Leader_Case_Client_0, Sleepy_Leader_Case_Client_1, Sleepy_Leader_Case_Validator_0.log, Sleepy_Leader_Case_Validator_1.log, Sleepy_Leader_Case_Validator_2.log, Sleepy_Leader_Case_Validator_3.log
+log files: Sleepy_Leader_Case_Client_0, Sleepy_Leader_Case_Client_1, Sleepy_Leader_Case_Client_2, Sleepy_Leader_Case_Validator_0.log, Sleepy_Leader_Case_Validator_1.log, Sleepy_Leader_Case_Validator_2.log, Sleepy_Leader_Case_Validator_3.log
 number of replicas: 4
 number of clients: 3
 number of client requests: 3 from first, 4 from second, 1 from third
 failure scenario: Tested for about 50 times, does not fail
 outcome: Program terminates successfully, files (Database) databases same for all nodes, logs indicate there was a timeout
 
-Test Case 3: Testing fault injection and timeout
-configuration file: 
-Ledger files: Validator_0.log, Validator_1.log, Validator_2.log, Validator_3.log
-log files: diem.log
+Test Case 3: Client_Retransmit_Case Testing de-duplication of requests and sending cached replies
+configuration file: config.csv
+Ledger files: Client_Retransmit-Case_Validator_0.log, Client_Retransmit-Case_Validator_1.log, Client_Retransmit-Validator_2.log, Client_Retransmit-Validator_3.log
+log files: Client_Retransmit-Case_Client_0.log, Client_Retransmit-Case_Client_1.log, Client_Retransmit-Case_Validator_0.log, Client_Retransmit-Case_Validator_1.log,Client_Retransmit-Case_Validator_2.log, Client_Retransmit-Case_Validator_3.log
 number of replicas: 4
-number of clients: 3
-number of client requests: 7 from first, 4 from second, 1 from third
-failure scenario: The program does not exit successfully sometimes (frequency: 1 in about 25 runs for this particular testcase), but database (file) states are consistent across all files
-outcome: Program terminates successfully(usually), files (Database) databases same for all nodes
-other: 
+number of clients: 2
+number of client requests: 3 from first, 1 from second
+failure scenario: Tested for about 50 times, does not fail
+outcome: Program terminates successfully, files (Database) databases same for all nodes, logs indicate nodes sending cached replies (de-duplication)
