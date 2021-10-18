@@ -131,3 +131,5 @@ dmypy.json
 # pycharm files
 .idea/
 pseudocode/
+ledger/
+log/

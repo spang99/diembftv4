@@ -4,6 +4,7 @@ import Ledger
 import MemPool
 import PaceMaker
 import Safety
+import os
 import sys
 from time import sleep
 
@@ -20,8 +21,7 @@ class Validator(process):
         Safety.f = (config['f'])
         Safety.validators = config['validators']
         Safety.validator_map = config['validator_map']
-        # Safety.log_path = '..\\logs\\' + Safety.validator_name + r'.log'
-        Safety.log_path = Safety.validator_name + '.log'
+        Safety.log_path = os.path.abspath('.\\log\\' + Safety.validator_name + '.log')
         file = open(Safety.log_path, "w")
         file.close()
         LeaderElection.setup_LeaderElection()  # Must be called after Safety is setup

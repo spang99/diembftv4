@@ -1,5 +1,6 @@
 import datetime
 import nacl.hash
+import os
 from nacl.signing import SigningKey
 from nacl.signing import VerifyKey
 from time import sleep
@@ -36,7 +37,7 @@ class Client(process):
         self.replies = {}
         self.f = config['f']  # faulty validators
         self.timeout = config['timeout']  # wait for 2f+1 replies
-        self.log_path = self.client_name + '.log'
+        self.log_path = os.path.abspath('.\\log\\' + self.client_name + '.log')
         file = open(self.log_path, "w")
         file.close()
         self.client_log("Initialized from config:", f"client_name: {config['client_name']}")
