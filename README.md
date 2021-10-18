@@ -19,16 +19,16 @@ diembftv4\Validator.da contains the code to intialize replicas as well as the co
 
 
 Code size:
-LOC for algorithm:
-We estimate that _____% of this code is for the algorithm itself and _____% of this code is for other functionality interleaved with it.
-LOC for other:
-Total LOC:
+LOC for algorithm: 1131
+We estimate that about 80% of this code is for the algorithm itself and 20% of this code is for other functionality interleaved with it.
+LOC for other: 229
+Total LOC: 1360
 To count the number of lines of code, we used CLOC as suggested in the assignment document.
 
 
 Language feature usage:
-List Comprehensions: 
-Dictionary Comprehensions: 0
+List Comprehensions: 5
+Dictionary Comprehensions: 2
 Set Comprehensions: 0
 Aggregations: 0
 Quantifications: 5
