@@ -15,7 +15,7 @@ class Request:
         # It is assumed that commands are of the form str(c)+"-"+str(i), where i refers
         # to the ith command from client c.
         self.cmd = cmd
-        self.client = client  # the actual process of the client. Used to send the reply
+        self.client = client  # the name of the client. Used to send the reply
         self.signature = signature  # signature(id)
 
 
@@ -31,6 +31,7 @@ class Client(process):
         output("Setting up client")
         # setup the client
         # config is a dictionary with config information
+        self.parent = config['parent']
         self.client_name = config['client_name']
         self.work_load = config["workload"]
         self.validators = config["validators"]
@@ -45,18 +46,23 @@ class Client(process):
         # self.log_path = os.path.abspath('..\\log\\' + self.client_name + '.log')
         file = open(self.log_path, "w")
         file.close()
-        self.client_log("Initialized from config:", f"client_name: {config['client_name']}")
+        self.client_log("Initialized from config:",
+                        f"client_name: {config['client_name']}")
         # print(str(self.work_load)[1:-2])
         self.client_log("Initialized from config:",
                         f"work_load_delay: {self.work_load.delay}, work_load_num_requests: {self.work_load.numrequests}, work_load_retransmit: {self.work_load.retransmit}")
-        self.client_log("Initialized from config:", f"validators: {config['validators']}")
-        self.client_log("Initialized from config:", f"private_key: {config['private_key']}")
+        self.client_log("Initialized from config:",
+                        f"validators: {config['validators']}")
+        self.client_log("Initialized from config:",
+                        f"private_key: {config['private_key']}")
         self.client_log("Initialized from config:", f"f: {config['f']}")
-        self.client_log("Initialized from config:", f"timeout: {config['timeout']}")
+        self.client_log("Initialized from config:",
+                        f"timeout: {config['timeout']}")
 
     def receive(msg=('Reply', (reqid, result)), from_=p):
         # print(f"Received reply from {p} for RequestID: {reqid}")
-        self.client_log("Received Reply:", f"sender: {p}, reqid: {reqid}, result: {result}")
+        self.client_log("Received Reply:",
+                        f"sender: {p}, reqid: {reqid}, result: {result}")
         if reqid in replies:
             replies[reqid].append(result)
         else:
@@ -67,7 +73,7 @@ class Client(process):
             sleep(work_load.delay)
             # send the request
             client = self
-            cmd = str(self) + "-" + str(i) + "\n"
+            cmd = client_name + "-" + str(i) + "\n"
             req_hash = nacl.hash.sha256(cmd.encode())
             reqid = i
             signature = private_key.sign(req_hash)
@@ -98,12 +104,14 @@ class Client(process):
         # validators to exit
         # sleep a couple of seconds to allow receival of validator replies (to prevent transport exception)
         sleep(2)
-        send(('finished_workload',), to=nodeof(self))
-        self.client_log("Sent finished_workload:", f"recipients: {nodeof(self)}")
+        send(('finished_workload',), to=parent)
+        self.client_log("Sent finished_workload:",
+                        f"recipients: {nodeof(self)}")
 
     def client_log(type, content_str):
         # initial settings, generated seeds, message content received, message sent content, timeouts, committed blocks, timestamp
         file = open(self.log_path, "a")
-        log_str = datetime.datetime.now().strftime("%H:%M:%S") + " " + str(type) + " " + str(content_str) + '\n'
+        log_str = datetime.datetime.now().strftime("%H:%M:%S") + " " + \
+            str(type) + " " + str(content_str) + '\n'
         file.write(log_str)
         file.close()

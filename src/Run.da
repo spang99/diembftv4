@@ -1,0 +1,76 @@
+import Client
+import Validator
+from nacl.signing import SigningKey
+
+config(channel='fifo', clock='Lamport')
+
+
+class Run(process):
+    def setup(config):
+        self.test_case_name = config['test_case_name']
+        self.num_validators = config['num_validators']
+        self.num_clients = config['num_clients']
+        # list with num_clients number of workloads
+        self.client_workloads = config['client_workloads']
+        self.f = config['f']
+        # if true, a validator will sleep when they are supposed to send a message
+        self.faulty_leader = config['faulty_leader']
+        self.faulty_leader_index = config['faulty_leader_index']
+
+    def run(self):
+        output(f"Running test case: {test_case_name}")
+        clients = new(Client.Client, num=num_clients)
+        validators = new(Validator.Validator, num=4)
+
+        client_public_keys = {}
+        client_map = {}
+        for i, client in enumerate(clients):
+            client_config = {}
+            client_private_key = SigningKey.generate()
+            client_config['private_key'] = client_private_key
+            # add public key to client_public_keys
+            client_name = 'Client_'+str(i)
+            client_public_keys[client_name] = client_private_key.verify_key
+            client_config['client_name'] = client_name
+            client_map[client_name] = client
+            client_workload = client_workloads[i]
+            client_config['f'] = f
+            client_config['validators'] = validators
+            client_config['workload'] = client_workload
+            client_config['timeout'] = 10
+            client_config['parent'] = self
+            setup(client, (client_config,))
+
+        validator_private_keys = {
+            str(val): SigningKey.generate() for val in validators}
+        validator_public_keys = {
+            str(val): validator_private_keys[str(val)].verify_key for val in validators}
+        validator_map = {str(val): val for val in validators}
+        for i, val in enumerate(validators):
+            config = {}
+            validator_private_key = validator_private_keys[str(val)]
+            config['private_key'] = validator_private_key
+            if i == faulty_leader_index and faulty_leader:
+                config['faulty'] = True
+            else:
+                config['faulty'] = False
+            config['public_keys'] = validator_public_keys
+            config['f'] = 1
+            # has to be list so that PaceMaker can deterministically choose a leader in case of round robin
+            config['validators'] = list(validators)
+            config['validator_map'] = validator_map
+            config['client_map'] = client_map
+            config['validator_name'] = "Validator_" + str(i)
+            config['parent'] = self
+            # print(f"Calling setup for validator {i}")
+            setup(val, (validators - {val}, 0, config))
+
+        start(validators)
+        start(clients)
+
+        await(each(c in clients, has=received(('finished_workload',), from_=c)))
+        output(f'\t\t\t\t\t\t\t\tdone')
+        send(('RunDone',), to=validators)
+        await(each(v in validators, has=received(('Exiting',), from_=v)))
+        send(('finished_test_case',), to=nodeof(self))
+        output(f"Finished test case: {test_case_name}")

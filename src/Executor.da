@@ -1,0 +1,29 @@
+import Run
+import Client
+
+config(channel='fifo', clock='Lamport')
+
+
+def main():
+    run_config = {}
+    # LOGIC TO READ CONFIG FILE GOES HERE
+    # THE FOLLOWING PARAMETERS ON THE RIGHTHAND SIDE SHOULD SOMEHOW BE READ
+    # FROM A CONFIG FILE IN JSON OR PLAINTEXT FORMAT
+    run_config['test_case_name'] = "Normal Case"
+    run_config['num_validators'] = 4
+    #run_config['num_clients'] = 2
+    run_config['num_clients'] = 1
+    # list with num_clients number of workloads
+    #run_config['client_workloads'] = [Client.Workload(3, 2, False), Client.Workload(4, 3, False)]
+    run_config['client_workloads'] = [Client.Workload(3, 2, False)]
+    run_config['f'] = 1
+    # if true, a validator will sleep when they are supposed to send a message
+    run_config['faulty_leader'] = False
+    run_config['faulty_leader_index'] = 0
+
+    run1 = new(Run.Run)
+    setup(run1, (run_config,))
+
+    start(run1)
+    await(each(r in {run1}, has=received(('finished_test_case',), from_=r)))
+    output(f"Finished all test cases.")

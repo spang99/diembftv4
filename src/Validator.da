@@ -16,6 +16,7 @@ config(channel='fifo', clock='Lamport')
 class Validator(process):
     def setup(validators: set, exit_cnt: int, config):
         # output("Setting up validator")
+        self.parent = config['parent']
         global public_keys
         self.public_keys = config['public_keys']
         Safety.set_private_key(config['private_key'])
@@ -335,3 +336,4 @@ class Validator(process):
         output(f"Exiting: {Safety.validator_name}")
         # Safety.log_file.close()
         Safety.log("Exit:", Safety.validator_name)
+        send(('Exiting',), to=parent)
