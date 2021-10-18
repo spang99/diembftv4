@@ -1,0 +1,30 @@
+21:55:09 Initialized from config: client_name: Client_1
+21:55:09 Initialized from config: work_load_delay: 2, work_load_num_requests: 7, work_load_retransmit: False
+21:55:09 Initialized from config: validators: {<Validator:f0007>, <Validator:f0008>, <Validator:f0006>, <Validator:f0005>}
+21:55:09 Initialized from config: private_key: b'_\x92B\xcf\xb1_q\xc6\xd3\x8e\xdc9\x03Ibp\x93\xa7\x10_6\xb8\xa0I0\xa9\xb5]\xdf\x94\xc2\xd9'
+21:55:09 Initialized from config: f: 1
+21:55:09 Initialized from config: timeout: 10
+21:55:11 Sent Request: recipients: {<Validator:f0007>, <Validator:f0008>, <Validator:f0006>, <Validator:f0005>}, id:1, cmd: <Client:f0002>-1
+, signature: b'^\x1c7\x9b\x87\xab\xa5\x8exc\x18\xe9T\xacQ\xd1\xda\xb6&\xb2\xff\x9a\x9b\xf0\xa8\xce\xd1\xc19\x82\x99\x07C\xf3\xe2\xa0\x8et61-Q\x96\xdc\x86C\x87\xb1X]U\xe7w\xc3\x80ze\x18W\xa0\n,g\x0c038e5fb3d6334b68622193be54d081b12f11f265e88622a8b8f9393743a55206'
+21:55:11 Received Reply: sender: <Validator:f0006>, reqid: 1, result: Your cmd: <Client:f0002>-1
+ was committed by <Validator:f0006>
+21:55:11 Received Reply: sender: <Validator:f0007>, reqid: 1, result: Your cmd: <Client:f0002>-1
+ was committed by <Validator:f0007>
+21:55:11 Received Reply: sender: <Validator:f0005>, reqid: 1, result: Your cmd: <Client:f0002>-1
+ was committed by <Validator:f0005>
+21:55:13 Sent Request: recipients: {<Validator:f0007>, <Validator:f0008>, <Validator:f0006>, <Validator:f0005>}, id:2, cmd: <Client:f0002>-2
+, signature: b'\xdf\xa2\xdd\x9fg\xbb\xb1E\x03R\xef\xbd\xc0\xfe``\xad`k\xff<\xce\xc50\xe6\x968\xfe\xeadG\x9e\xa8\x9b\x10e\xc9\\L\xc0F\xbb\xfe9\x01>\xads\x03\x9e\xd5IE\x95,\xa9\x9e\niL\x9c\xa74\n7b2bc1910cbf0d097a26f0d4882b4408ba1689c89207d91c392649ed1d86123b'
+21:55:13 Received Reply: sender: <Validator:f0008>, reqid: 1, result: Your cmd: <Client:f0002>-1
+ was committed by <Validator:f0008>
+21:55:21 Sent Request: recipients: {<Validator:f0007>, <Validator:f0008>, <Validator:f0006>, <Validator:f0005>}, id:2, cmd: <Client:f0002>-2
+, signature: b'\xdf\xa2\xdd\x9fg\xbb\xb1E\x03R\xef\xbd\xc0\xfe``\xad`k\xff<\xce\xc50\xe6\x968\xfe\xeadG\x9e\xa8\x9b\x10e\xc9\\L\xc0F\xbb\xfe9\x01>\xads\x03\x9e\xd5IE\x95,\xa9\x9e\niL\x9c\xa74\n7b2bc1910cbf0d097a26f0d4882b4408ba1689c89207d91c392649ed1d86123b'
+21:55:31 Sent Request: recipients: {<Validator:f0007>, <Validator:f0008>, <Validator:f0006>, <Validator:f0005>}, id:2, cmd: <Client:f0002>-2
+, signature: b'\xdf\xa2\xdd\x9fg\xbb\xb1E\x03R\xef\xbd\xc0\xfe``\xad`k\xff<\xce\xc50\xe6\x968\xfe\xeadG\x9e\xa8\x9b\x10e\xc9\\L\xc0F\xbb\xfe9\x01>\xads\x03\x9e\xd5IE\x95,\xa9\x9e\niL\x9c\xa74\n7b2bc1910cbf0d097a26f0d4882b4408ba1689c89207d91c392649ed1d86123b'
+21:55:41 Sent Request: recipients: {<Validator:f0007>, <Validator:f0008>, <Validator:f0006>, <Validator:f0005>}, id:2, cmd: <Client:f0002>-2
+, signature: b'\xdf\xa2\xdd\x9fg\xbb\xb1E\x03R\xef\xbd\xc0\xfe``\xad`k\xff<\xce\xc50\xe6\x968\xfe\xeadG\x9e\xa8\x9b\x10e\xc9\\L\xc0F\xbb\xfe9\x01>\xads\x03\x9e\xd5IE\x95,\xa9\x9e\niL\x9c\xa74\n7b2bc1910cbf0d097a26f0d4882b4408ba1689c89207d91c392649ed1d86123b'
+21:55:51 Sent Request: recipients: {<Validator:f0007>, <Validator:f0008>, <Validator:f0006>, <Validator:f0005>}, id:2, cmd: <Client:f0002>-2
+, signature: b'\xdf\xa2\xdd\x9fg\xbb\xb1E\x03R\xef\xbd\xc0\xfe``\xad`k\xff<\xce\xc50\xe6\x968\xfe\xeadG\x9e\xa8\x9b\x10e\xc9\\L\xc0F\xbb\xfe9\x01>\xads\x03\x9e\xd5IE\x95,\xa9\x9e\niL\x9c\xa74\n7b2bc1910cbf0d097a26f0d4882b4408ba1689c89207d91c392649ed1d86123b'
+21:56:01 Sent Request: recipients: {<Validator:f0007>, <Validator:f0008>, <Validator:f0006>, <Validator:f0005>}, id:2, cmd: <Client:f0002>-2
+, signature: b'\xdf\xa2\xdd\x9fg\xbb\xb1E\x03R\xef\xbd\xc0\xfe``\xad`k\xff<\xce\xc50\xe6\x968\xfe\xeadG\x9e\xa8\x9b\x10e\xc9\\L\xc0F\xbb\xfe9\x01>\xads\x03\x9e\xd5IE\x95,\xa9\x9e\niL\x9c\xa74\n7b2bc1910cbf0d097a26f0d4882b4408ba1689c89207d91c392649ed1d86123b'
+21:56:11 Sent Request: recipients: {<Validator:f0007>, <Validator:f0008>, <Validator:f0006>, <Validator:f0005>}, id:2, cmd: <Client:f0002>-2
+, signature: b'\xdf\xa2\xdd\x9fg\xbb\xb1E\x03R\xef\xbd\xc0\xfe``\xad`k\xff<\xce\xc50\xe6\x968\xfe\xeadG\x9e\xa8\x9b\x10e\xc9\\L\xc0F\xbb\xfe9\x01>\xads\x03\x9e\xd5IE\x95,\xa9\x9e\niL\x9c\xa74\n7b2bc1910cbf0d097a26f0d4882b4408ba1689c89207d91c392649ed1d86123b'
