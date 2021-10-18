@@ -73,6 +73,7 @@ class Client(process):
             replies[reqid] = [result]
 
     def run():
+        output("Starting up...")
         for i in range(1, work_load.numrequests + 1):
             sleep(work_load.delay)
             # send the request
