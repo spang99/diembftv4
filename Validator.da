@@ -233,19 +233,19 @@ class Validator(process):
     def receive(msg=("ProposalMsg", P), from_=sender):
         process_proposal_msg(P, sender)
         Safety.log("Received ProposalMsg:",
-                   f"sender: {sender}, block: {P.block}, last_round_tc: {P.last_round_tc}, high_commit_qc: {P.high_commit_qc}, signature: {P.signature}")
+                   f"sender: {sender}, block: {P.block}, block_author: {P.block.author}, block_round: {P.block.round}, block_payload: {P.block.payload}, block_qc: {P.block.qc}, block_id: {P.block.id} last_round_tc: {P.last_round_tc}, high_commit_qc: {P.high_commit_qc}, signature: {P.signature}")
 
     # PSEUDOCODE: if M is a timeout message then process_timeout_message(M)
     def receive(msg=("TimeoutMsg", M), from_=sender):
         process_timeout_msg(M)
         Safety.log("Received TimeoutMsg:",
-                   f"sender: {sender}, tmo_info:{M.tmo_info}, last_round_tc: {M.last_round_tc}, high_commit_qc: {M.high_commit_qc}")
+                   f"sender: {sender}, tmo_info:{M.tmo_info}, tmo_info_round: {M.tmo_info.round}, tmo_info_high_qc: {M.tmo_info.high_qc}, tmo_info_sender: {M.tmo_info.sender}, tmo_info_signature: {M.tmo_info.signature}, last_round_tc: {M.last_round_tc}, high_commit_qc: {M.high_commit_qc}")
 
     # PSEUDOCODE: if M is a vote message then process_vote_msg(M)
     def receive(msg=("VoteMsg", M), from_=sender):
         process_vote_msg(M)
         Safety.log("Received VoteMsg:",
-                   f"sender: {sender}, vote_info: {M.vote_info}, ledger_commit_info: {M.ledger_commit_info}, high_commit_qc: {M.high_commit_qc}, signature: {M.signature}")
+                   f"sender: {sender}, vote_info: {M.vote_info}, vote_info_id: {M.vote_info.id}, vote_info_round: {M.vote_info.round}, vote_info_parent_id: {M.vote_info.parent_id}, vote_info_exec_state_id: {M.vote_info.exec_state_id}, ledger_commit_info: {M.ledger_commit_info}, high_commit_qc: {M.high_commit_qc}, signature: {M.signature}")
 
     # PSEUDOCODE: if M is a local timeout then Pacemaker.local_timeout_round()
     def receive(msg=("LocalTimeout", M), from_=sender):
