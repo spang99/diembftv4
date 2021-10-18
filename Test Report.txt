@@ -1,6 +1,6 @@
 Test Report
 
-Test Case 1: Testing the normal (happy) scenario
+Test Case 1: Normal_Case Testing the normal (happy) scenario
 configuration file: config.csv
 Ledger files: Normal_Case_database_Validator_0, Normal_Case_database_Validator_1, Normal_Case_database_Validator_2, Normal_Case_database_Validator_3
 log files: Normal_Case_Client_0, Normal_Case_Client_1, Normal_Case_Validator_0.log, Normal_Case_Validator_1.log, Normal_Case_Validator_2.log, Normal_Case_Validator_3.log
@@ -9,6 +9,16 @@ number of clients: 2
 number of client requests: 3 from first, 4 from second
 failure scenario: Tested for about 50 times, does not fail
 outcome: Program terminates successfully, files (Database) databases same for all nodes
+
+Test Case 2: Sleepy_Leader_Case Testing for when there is a faulty leader and a timeout occurs
+configuration file: config.csv
+Ledger files: Sleepy_Leader_Case_database_Validator_0, Sleepy_Leader_Case_database_Validator_1, Sleepy_Leader_Case_database_Validator_2, Sleepy_Leader_Casedatabase_Validator_3
+log files: Sleepy_Leader_Case_Client_0, Sleepy_Leader_Case_Client_1, Sleepy_Leader_Case_Validator_0.log, Sleepy_Leader_Case_Validator_1.log, Sleepy_Leader_Case_Validator_2.log, Sleepy_Leader_Case_Validator_3.log
+number of replicas: 4
+number of clients: 3
+number of client requests: 3 from first, 4 from second, 1 from third
+failure scenario: Tested for about 50 times, does not fail
+outcome: Program terminates successfully, files (Database) databases same for all nodes, logs indicate there was a timeout
 
 Test Case 2: Testing fault injection and timeout
 configuration file: 
