@@ -30,6 +30,6 @@ Await Statements: 7
 Receive Handlers: 7
 
 Contributions:
-Nasratullah:
+Nasratullah: Validator.da, Safety.da, MemPool.da, client, config functionality, signature verification, README.md, Test Report
 Sudipto:
 Stella: PaceMaker.da, LeaderElection.da, logging functionality, config functionality, README.md, Test Report.txt, User Manual.txt
