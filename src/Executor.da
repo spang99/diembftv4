@@ -1,5 +1,6 @@
-import Run
 import Client
+import Run
+from pathlib import Path
 
 config(channel='fifo', clock='Lamport')
 
@@ -9,17 +10,39 @@ def main():
     # LOGIC TO READ CONFIG FILE GOES HERE
     # THE FOLLOWING PARAMETERS ON THE RIGHTHAND SIDE SHOULD SOMEHOW BE READ
     # FROM A CONFIG FILE IN JSON OR PLAINTEXT FORMAT
-    run_config['test_case_name'] = "Normal Case"
-    run_config['num_validators'] = 4
-    #run_config['num_clients'] = 2
-    run_config['num_clients'] = 1
-    # list with num_clients number of workloads
-    #run_config['client_workloads'] = [Client.Workload(3, 2, False), Client.Workload(4, 3, False)]
-    run_config['client_workloads'] = [Client.Workload(3, 2, False)]
-    run_config['f'] = 1
-    # if true, a validator will sleep when they are supposed to send a message
-    run_config['faulty_leader'] = False
-    run_config['faulty_leader_index'] = 0
+    config_folder = Path("./config")
+    fname = 'config.csv'
+    self.path = config_folder / fname
+    with open(self.path, 'r') as file:
+        ints = ['num_validators', 'num_clients', 'client_workloads_numrequests', 'client_workloads_delay', 'f',
+                'faulty_leader_index']
+        bools = ['faulty_leader']
+        strings = ['test_case_name']
+        workloads = []
+        for line in file:
+            arguments = line.split('=', 4)
+            key = arguments[0].strip()
+            if key == 'client_workloads':
+                workloads.append(
+                    Client.Workload(int(arguments[1].strip()), int(arguments[2].strip()), bool(arguments[3].strip)))
+            if key in ints:
+                run_config[key] = int(arguments[1].strip())
+            if key in bools:
+                run_config[key] = bool(arguments[1].strip())
+            else:
+                run_config[key] = arguments[1].strip()
+        run_config['client_workloads'] = workloads
+    # run_config['test_case_name'] = "Normal Case"
+    # run_config['num_validators'] = 4
+    # # run_config['num_clients'] = 2
+    # run_config['num_clients'] = 1
+    # # list with num_clients number of workloads
+    # # run_config['client_workloads'] = [Client.Workload(3, 2, False), Client.Workload(4, 3, False)]
+    # run_config['client_workloads'] = [Client.Workload(3, 2, False)]
+    # run_config['f'] = 1
+    # # if true, a validator will sleep when they are supposed to send a message
+    # run_config['faulty_leader'] = False
+    # run_config['faulty_leader_index'] = 0
 
     run1 = new(Run.Run)
     setup(run1, (run_config,))

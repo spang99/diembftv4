@@ -19,5 +19,5 @@ number of replicas: 4
 number of clients: 3
 number of client requests: 7 from first, 4 from second, 1 from third
 failure scenario: The program does not exit successfully sometimes (frequency: 1 in about 25 runs for this particular testcase), but database (file) states are consistent across all files
-outcome: Program terminates successfully(usually), files (Database) databses same for all nodes
+outcome: Program terminates successfully(usually), files (Database) databases same for all nodes
 other: 

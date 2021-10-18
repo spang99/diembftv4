@@ -1,0 +1,8 @@
+test_case_name = Normal Case
+num_validators = 4
+num_clients = 2
+client_workloads = 3 = 2 = False
+client_workloads = 4 = 3 = False
+f = 1
+faulty_leader = False
+faulty_leader_index = 0
