@@ -20,7 +20,7 @@ number of client requests: 3 from first, 4 from second, 1 from third
 failure scenario: Tested for about 50 times, does not fail
 outcome: Program terminates successfully, files (Database) databases same for all nodes, logs indicate there was a timeout
 
-Test Case 2: Testing fault injection and timeout
+Test Case 3: Testing fault injection and timeout
 configuration file: 
 Ledger files: Validator_0.log, Validator_1.log, Validator_2.log, Validator_3.log
 log files: diem.log

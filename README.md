@@ -11,7 +11,7 @@ Timeouts.  discuss your choice of timeout formulas and timeout values for client
 
 
 Bugs and Limitations.  a list of all known bugs in and limitations of your code.
-Crashes sometimes when requests from two different clients are sent at the same time.
+
 
 Main files:
 diembftv4\Client.da contains the code to initialize the client as well as functions which allow the client to send and receive requests to its validators.
@@ -27,19 +27,19 @@ To count the number of lines of code, we used CLOC as suggested in the assignmen
 
 
 Language feature usage:
-List Comprehensions:
-Dictionary Comprehensions:
-Set Comprehensions:
-Aggregations:
-Quantifications:
-Await Statements:
-Receive Handlers:
+List Comprehensions: 0
+Dictionary Comprehensions: 0
+Set Comprehensions: 0
+Aggregations: 0
+Quantifications: 5
+Await Statements: 7
+Receive Handlers: 7
 
 
 Contributions:
 Nasratullah:
 Sudipto:
-Stella:
+Stella: PaceMaker.da, LeaderElection.da, logging functionality, config functionality, README.md, Test Report.txt, User Manual.txt
 
 
 
