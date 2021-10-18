@@ -82,7 +82,7 @@ class Client(process):
             signature = private_key.sign(req_hash)
             req = Request(reqid, cmd, client, signature)
             # output(f"Sending request to validators:{validators}")
-            output("Sending request to validators.")
+            client_log("Sending request to validators.", "")
             send(('Request', req), to=validators)
             self.client_log("Sent Request:",
                             f"recipients: {validators}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
@@ -92,11 +92,12 @@ class Client(process):
             pending_request = True
             while pending_request:
                 if await(len(replies[i]) == 2 * f + 1):
-                    output(f"{cmd[:-1]} was committed.")
+                    #output(f"{cmd[:-1]} was committed.")
+                    client_log(f"{cmd[:-1]}", "was committed.")
                     pending_request = False
                 elif timeout(timeout):
                     # retransmit request
-                    output(f"retransmitting {cmd} due to timeout")
+                    client_log(f"retransmitting {cmd} due to timeout", "")
                     send(('Request', req), to=validators)
                     self.client_log("Sent Request:",
                                     f"recipients: {validators}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")

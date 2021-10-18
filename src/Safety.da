@@ -47,7 +47,7 @@ def set_public_keys(keys):
 # get public key of a validator
 def get_public_key(val):
     if val not in _public_keys:
-        print(f"{Safety.validator_id}: Validator: {val} public key not found")
+        log(f"Validator: {str(val)}:", "public key not found")
         return
     else:
         return _public_keys[val]
@@ -81,7 +81,7 @@ def _consecutive(block_round, round):
 def _safe_to_extend(block_round, qc_round, tc):
     # print(f"{Safety.validator_id}: Inside Safety._safe_to_extend")
     if tc is None:
-        print("Discarding message: No TC")
+        log("Discarding message: No TC", "")
         return False
     # PSEUDOCODE(return consecutive(block_round, tc.round) and qc_round >= max{tc.tmo_high_qc_rounds})
     return _consecutive(block_round, tc.round) and (qc_round >= max(tc.tmo_high_qc_rounds))
