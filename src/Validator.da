@@ -148,6 +148,9 @@ class Validator(process):
     def process_timeout_msg(M):
         # output('In function: process_timeout_msg')
 
+        if not Safety._valid_signature(Safety.get_public_key(str(M.tmo_info.sender)), M.tmo_info.signature):
+            output('Not correct signature, TMO message will not be processed')
+
         # PSEUDOCODE: process_certificate_qc(M.tmo_info.high_qc)
         process_certificate_qc(M.tmo_info.high_qc)
 
