@@ -10,7 +10,8 @@ Timeouts:
 Timeout formulas were not given much attention in this implementation. It was mainly used to allow for real time debugging of the algorithm by choosing timeouts on the order of seconds. Once we move onto a real distributed network, we can adjust timeout parameters based on real-world network delay measurements.
 
 Bugs and Limitations:
-Known bugs and limitations include: Clients do not verify if they receive 2f+1 replies from unique validators. If one validator sends multiple replies, the client will consider them as multiple validators having committed the request. Also, in some cases when timeouts are being tested through the faulty_leader argument in diembftv4/src/config.csv, the validators have a possibility of getting caught in an endless cycle of proposing and committing empty blocks. This has to do with a bug in how we implemented the mechanism for validators to not timeout nor propose a series of empty blocks when there are no pending requests to process.
+1. Known bugs and limitations include: Clients do not verify if they receive 2f+1 replies from unique validators. If one validator sends multiple replies, the client will consider them as multiple validators having committed the request.
+2. In some cases when timeouts are being tested through the faulty_leader argument in diembftv4/src/config.csv, the validators have a possibility of getting caught in an endless cycle of proposing and committing empty blocks. This has to do with a bug in how we implemented the mechanism for validators to not timeout nor propose a series of empty blocks when there are no pending requests to process.
 
 Main files:
 diembftv4\Client.da contains the code to initialize the client as well as functions which allow the client to send and receive requests to its validators.
@@ -34,5 +35,5 @@ Receive Handlers: 7
 
 Contributions:
 Nasratullah: Validator.da, Safety.da, MemPool.da, client, config functionality, signature verification, README.md, Test Report, extended psuedocode
-Sudipto: BlockTree.da, Ledger.da, signature verification, extended psuedocode
+Sudipto: Validator.da, BlockTree.da, Ledger.da, signature verification, extended psuedocode, User Manual.txt, Test Report.txt, README.md
 Stella: PaceMaker.da, LeaderElection.da, logging functionality, config functionality, README.md, Test Report.txt, User Manual.txt
