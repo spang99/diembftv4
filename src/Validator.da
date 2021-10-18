@@ -85,7 +85,10 @@ class Validator(process):
                 round_start = True
 
     # PSEUDOCODE: Procedure process_proposal_msg(P)
-    def process_proposal_msg(P, sender):
+    def process_proposal_msg(P, sender, signature):
+        #Check signature of sender first
+        if not Safety._valid_signature(Safety.get_public_key(str(sender)), signature):
+            output('Not correct signature, Message will not be processed')
         # output('In function: process_proposal_msg.')
         # remove the request from your request pool so you don't propose it again
         MemPool.remove_from_requests(P.block.payload)
@@ -227,11 +230,12 @@ class Validator(process):
 
             # should send itself the proposal as well
             # PSEUDOCODE: broadcast ProposalMsg(b, last_tc, Block - Tree.high_commit_qc)
-            send(("ProposalMsg", P), to=validators.union({self}))
+            signature = Safety.get_private_key().sign((str(P).encode()))
+            send(("ProposalMsg", P, signature), to=validators.union({self}))
 
     # PSEUDOCODE: if M is a proposal message then process_proposal_msg(M)
-    def receive(msg=("ProposalMsg", P), from_=sender):
-        process_proposal_msg(P, sender)
+    def receive(msg=("ProposalMsg", P, signature), from_=sender):
+        process_proposal_msg(P, sender, signature)
         Safety.log("Received ProposalMsg:",
                    f"sender: {sender}, block: {P.block}, block_author: {P.block.author}, block_round: {P.block.round}, block_payload: {P.block.payload}, block_qc: {P.block.qc}, block_id: {P.block.id} last_round_tc: {P.last_round_tc}, high_commit_qc: {P.high_commit_qc}, signature: {P.signature}")
 
