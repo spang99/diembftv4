@@ -1,7 +1,9 @@
 User Manual
 
 Our implementation of DiemBFT v4 is run on a single host, where each process is a client or a replica.
-Make sure to run with pyDistAlgo version 1.1.0b15 and CPython version 3.7 on MacOS or Windows 10.
+Make sure to run with pyDistAlgo version 1.1.0b15 and CPython version 3.7 on MacOS or Windows 10. Also,
+make sure to have the PyNaCl library installed for the cryptography elements of the code. Refer to 
+https://pypi.org/project/PyNaCl/ for instructions on how to do so.
 
 To run the program, go to the directory diembftv4
 
