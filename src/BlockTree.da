@@ -186,6 +186,8 @@ def pending_block_tree_prune(newroot_id):
 
 def process_qc(qc):
     global pending_block_tree, high_commit_qc, high_qc
+    if (qc is not None) and (qc.author_signature is not None) and (not Safety._valid_signature(Safety.get_public_key(str(qc.author)), qc.author_signature)):
+            output('Not correct signature, QC will not be processed')
     # print(f'{Safety.validator_id}: In function: process_qc.')
     committed_request = None
     # If received genesis QC and round is 0, return because genesis QC is already highqc and has no info
