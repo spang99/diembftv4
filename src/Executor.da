@@ -33,7 +33,7 @@ def main():
             elif key in ints:
                 run_config[key] = int(arguments[1].strip())
             elif key in bools:
-                run_config[key] =arguments[1].strip() == 'True'
+                run_config[key] = arguments[1].strip() == 'True'
             else:
                 run_config[key] = arguments[1].strip()
         run_config['client_workloads'] = workloads
@@ -45,4 +45,5 @@ def main():
 
         start(run)
         await(each(r in {run}, has=received(('finished_test_case',), from_=r)))
-        output(f"Finished all test cases.")
+
+    output(f"Finished all test cases.")

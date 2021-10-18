@@ -1,18 +1,27 @@
-test_case_name = Normal Case
+test_case_name = Normal-Case
 num_validators = 4
 num_clients = 2
 client_workloads = 3 = 2 = False
 client_workloads = 4 = 3 = False
 f = 1
-faulty_leader = True
+faulty_leader = False
 faulty_leader_index = 0
 -----
-test_case_name = Other Case
-num_validators = 5
+test_case_name = Sleepy_Leader-Case
+num_validators = 4
 num_clients = 3
 client_workloads = 3 = 2 = False
 client_workloads = 4 = 3 = False
-client_workloads = 3 = 2 = False
+client_workloads = 1 = 7 = False
+f = 1
+faulty_leader = True
+faulty_leader_index = 3
+-----
+test_case_name = Client_Retransmit-Case
+num_validators = 4
+num_clients = 2
+client_workloads = 3 = 2 = True
+client_workloads = 1 = 4 = False
 f = 1
 faulty_leader = False
 faulty_leader_index = 0

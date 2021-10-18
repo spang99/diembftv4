@@ -35,6 +35,7 @@ class Client(process):
         self.parent = config['parent']
         self.client_name = config['client_name']
         self.work_load = config["workload"]
+        self.retransmit = config["workload"].retransmit
         self.validators = config["validators"]
         self.private_key = config['private_key']
         self.replies = {}
@@ -95,6 +96,11 @@ class Client(process):
                     #output(f"{cmd[:-1]} was committed.")
                     client_log(f"{cmd[:-1]}", "was committed.")
                     pending_request = False
+                    if retransmit:
+                        retransmit = False
+                        client_log(
+                            f"retransmitting {cmd[:-1]} to test validator caching.", "")
+                        send(('Request', req), to=validators)
                 elif timeout(timeout):
                     # retransmit request
                     client_log(f"retransmitting {cmd} due to timeout", "")

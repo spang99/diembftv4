@@ -85,7 +85,8 @@ class Validator(process):
         # Safety.log("Sent message:", f"{msg_type}: {str(msg_object)} to {recipient}")
 
     def send_reply(cmd):
-        result = "Your cmd: " + cmd + " was committed by " + str(self)
+        result = "Your cmd: " + cmd[:-1] + \
+            " was committed by " + Safety.validator_name
         client_str = cmd.split('-')[0]
         reqid = int(cmd.split('-')[1])
         client = MemPool.clients[client_str]
