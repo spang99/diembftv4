@@ -7,6 +7,7 @@ import Safety
 import os
 import sys
 from pathlib import Path
+from nacl.exceptions import BadSignatureError
 from time import sleep
 
 config(channel='fifo', clock='Lamport')
@@ -15,6 +16,8 @@ config(channel='fifo', clock='Lamport')
 class Validator(process):
     def setup(validators: set, exit_cnt: int, config):
         # output("Setting up validator")
+        global public_keys
+        self.public_keys = config['public_keys']
         Safety.set_private_key(config['private_key'])
         Safety.set_public_keys(config['public_keys'])
         Safety.validator_id = str(self)
@@ -37,15 +40,33 @@ class Validator(process):
         self.round_start = False
         self.round_stop = False
         self.faulty = config['faulty']
-        Safety.log("Initialized from config:", f"private_key: {config['private_key']}")
-        Safety.log("Initialized from config:", f"public_keys: {config['public_keys']}")
+        Safety.log("Initialized from config:",
+                   f"private_key: {config['private_key']}")
+        Safety.log("Initialized from config:",
+                   f"public_keys: {config['public_keys']}")
         Safety.log("Initialized from config:", f"validator_id: {str(self)}")
-        Safety.log("Initialized from config:", f"validator_name: {config['validator_name']}")
+        Safety.log("Initialized from config:",
+                   f"validator_name: {config['validator_name']}")
         Safety.log("Initialized from config:", f"f: {config['f']}")
-        Safety.log("Initialized from config:", f"validators: {config['validators']}")
-        Safety.log("Initialized from config:", f"validator_map: {config['validator_map']}")
-        Safety.log("Initialized from config:", f"clients: {config['client_map']}")
+        Safety.log("Initialized from config:",
+                   f"validators: {config['validators']}")
+        Safety.log("Initialized from config:",
+                   f"validator_map: {config['validator_map']}")
+        Safety.log("Initialized from config:",
+                   f"clients: {config['client_map']}")
         Safety.log("Initialized from config:", f"faulty: {config['faulty']}")
+
+    # verify a signature
+    def validate_signature(sender, signature):
+        if sender not in public_keys:
+            return False
+        sender_public_key = public_keys[sender]
+        try:
+            valid_signature = sender_public_key.verify(signature)
+        except BadSignatureError:
+            Safety.log("Discarding message: Signature was forged or corrupted.")
+            return False
+        return True
 
     # sends a message to another validator
     def send_message(msg_type, msg_object, recipient):
@@ -90,13 +111,17 @@ class Validator(process):
                 round_start = True
 
     # PSEUDOCODE: Procedure process_proposal_msg(P)
-    def process_proposal_msg(P, sender, signature):
-        #Check signature of sender first
-        if not Safety._valid_signature(Safety.get_public_key(str(sender)), signature):
-            output('Not correct signature, Message will not be processed')
-        # output('In function: process_proposal_msg.')
+    def process_proposal_msg(P, sender):
+        # signature verification
+        if validate_signature(str(sender), P.signature) == False:
+            return
+        # check the signatures contained within the proposal using function from safety module
+        if (Safety.valid_signatures(P.block.qc, P.last_round_tc) == False or Safety.valid_signatures(P.high_commit_qc, None) == False):
+            return
+
         # remove the request from your request pool so you don't propose it again
         MemPool.remove_from_requests(P.block.payload)
+        # add to pending requests
         MemPool.pending_requests.add(P.block.payload)
 
         # PSEUDOCODE: process_certificate_qc(P.block.qc)
@@ -146,10 +171,11 @@ class Validator(process):
 
     # PSEUDOCODE: Procedure process_timeout_msg(M)
     def process_timeout_msg(M):
-        # output('In function: process_timeout_msg')
-
-        if not Safety._valid_signature(Safety.get_public_key(str(M.tmo_info.sender)), M.tmo_info.signature):
-            output('Not correct signature, TMO message will not be processed')
+        # signature verification
+        if validate_signature(M.tmo_info.sender, M.tmo_info.signature) == False:
+            return
+        if Safety.valid_signatures(M.high_commit_qc, M.last_round_tc) == False:
+            return
 
         # PSEUDOCODE: process_certificate_qc(M.tmo_info.high_qc)
         process_certificate_qc(M.tmo_info.high_qc)
@@ -186,9 +212,11 @@ class Validator(process):
 
     # PSEUDOCODE: Procedure process_vote_msg(M)
     def process_vote_msg(M):
-        # output(f'In function: process_vote_msg.')
-        if not Safety._valid_signature(Safety.get_public_key(str(M.sender)), M.signature):
-            output('Not correct signature, Message will not be processed')
+        # signature checking
+        if validate_signature(M.sender, M.signature) == False:
+            return
+        if Safety.valid_signatures(M.high_commit_qc, None) == False:
+            return
 
         # PSEUDOCODE: qc <- Block-Tree.process_vote(M)
         qc = BlockTree.process_vote(M)
@@ -218,7 +246,7 @@ class Validator(process):
                 # output("Waiting for requests/transactions to be submitted by clients...")
                 -- wait_for_requests
                 await((len(MemPool.pending_requests) > 1 ^ (
-                        '' not in MemPool.pending_requests)) or MemPool.progress_pending_cmd or run_done)
+                    '' not in MemPool.pending_requests)) or MemPool.progress_pending_cmd or run_done)
                 # await((len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests)) or run_done)
             if run_done:
                 # allow validator to exit
@@ -240,12 +268,11 @@ class Validator(process):
 
             # should send itself the proposal as well
             # PSEUDOCODE: broadcast ProposalMsg(b, last_tc, Block - Tree.high_commit_qc)
-            signature = Safety.get_private_key().sign((str(P).encode()))
-            send(("ProposalMsg", P, signature), to=validators.union({self}))
+            send(("ProposalMsg", P), to=validators.union({self}))
 
     # PSEUDOCODE: if M is a proposal message then process_proposal_msg(M)
-    def receive(msg=("ProposalMsg", P, signature), from_=sender):
-        process_proposal_msg(P, sender, signature)
+    def receive(msg=("ProposalMsg", P), from_=sender):
+        process_proposal_msg(P, sender)
         Safety.log("Received ProposalMsg:",
                    f"sender: {sender}, block: {P.block}, block_author: {P.block.author}, block_round: {P.block.round}, block_payload: {P.block.payload}, block_qc: {P.block.qc}, block_id: {P.block.id} last_round_tc: {P.last_round_tc}, high_commit_qc: {P.high_commit_qc}, signature: {P.signature}")
 
@@ -268,7 +295,8 @@ class Validator(process):
 
     def receive(msg=('Request', req), from_=sender):
         # output(f"Received request from {sender}.")
-        Safety.log("Received Request:", f"sender: {sender}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
+        Safety.log("Received Request:",
+                   f"sender: {sender}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
         Reply = MemPool.add_request(req)
         if Reply:
             # request already committed, send cached response
