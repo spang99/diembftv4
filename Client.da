@@ -1,5 +1,5 @@
-import nacl.hash
 import datetime
+import nacl.hash
 from nacl.signing import SigningKey
 from nacl.signing import VerifyKey
 from time import sleep
@@ -39,6 +39,14 @@ class Client(process):
         self.log_path = self.client_name + '.log'
         file = open(self.log_path, "w")
         file.close()
+        self.client_log("Initialized from config:", f"client_name: {config['client_name']}")
+        # print(str(self.work_load)[1:-2])
+        self.client_log("Initialized from config:",
+                        f"work_load_delay: {self.work_load.delay}, work_load_num_requests: {self.work_load.numrequests}, work_load_retransmit: {self.work_load.retransmit}")
+        self.client_log("Initialized from config:", f"validators: {config['validators']}")
+        self.client_log("Initialized from config:", f"private_key: {config['private_key']}")
+        self.client_log("Initialized from config:", f"f: {config['f']}")
+        self.client_log("Initialized from config:", f"timeout: {config['timeout']}")
 
     def receive(msg=('Reply', (reqid, result)), from_=p):
         # print(f"Received reply from {p} for RequestID: {reqid}")
@@ -62,7 +70,7 @@ class Client(process):
             output("Sending request to validators.")
             send(('Request', req), to=validators)
             self.client_log("Sent Request:",
-                       f"recipients: {validators}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
+                            f"recipients: {validators}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
             replies[i] = []
             -- reply
             # limitation: doesn't make sure replies are from unique validators
@@ -76,7 +84,7 @@ class Client(process):
                     output(f"retransmitting {cmd} due to timeout")
                     send(('Request', req), to=validators)
                     self.client_log("Sent Request:",
-                               f"recipients: {validators}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
+                                    f"recipients: {validators}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
 
         output(f"Finished workload and exiting")
         # in main, you can use await(each(c in clients, has=received(('finished_workload',), from_=c)))
