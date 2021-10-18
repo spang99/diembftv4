@@ -21,7 +21,6 @@ validator_name = None
 validators = None
 validator_map = None
 log_path = None
-# log_file = None
 
 # PSEUDOCODE(highest_vote_round;)
 highest_vote_round = 0  # initially 0

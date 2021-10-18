@@ -16,6 +16,7 @@ config(channel='fifo', clock='Lamport')
 class Validator(process):
     def setup(validators: set, exit_cnt: int, config):
         # output("Setting up validator")
+        self.test_case_name = config['test_case_name']
         self.parent = config['parent']
         global public_keys
         self.public_keys = config['public_keys']
@@ -29,19 +30,26 @@ class Validator(process):
         Safety.validator_map = config['validator_map']
         log_folder = Path("./log")
         os.makedirs(log_folder, exist_ok=True)
-        fname = Safety.validator_name + '.log'
+        fname = self.test_case_name + '_' + Safety.validator_name + '.log'
         Safety.log_path = log_folder / fname
-        # Safety.log_path = os.path.abspath('..\\log\\' + Safety.validator_name + '.log')
         file = open(Safety.log_path, "w")
         file.close()
         LeaderElection.setup_LeaderElection()  # Must be called after Safety is setup
         BlockTree.setup_BlockTree()  # Must be called after Safety is setup
+        ledger_folder = Path("./ledgers")
+        os.makedirs(ledger_folder, exist_ok=True)
+        fname = self.test_case_name + "_database_" + Safety.validator_name + ".ledger"
+        Ledger.filename = ledger_folder / fname
+        file = open(Ledger.filename, 'w')
+        file.close()
         Ledger.setup_Ledger()  # Must be called after Safety is setup
         MemPool.clients = config['client_map']
         self.run_done = False
         self.round_start = False
         self.round_stop = False
         self.faulty = config['faulty']
+        Safety.log("Initialized from config:",
+                   f"test_case_name: {config['test_case_name']}")
         Safety.log("Initialized from config:",
                    f"private_key: {config['private_key']}")
         Safety.log("Initialized from config:",

@@ -27,6 +27,7 @@ class Run(process):
         for i, client in enumerate(clients):
             client_config = {}
             client_private_key = SigningKey.generate()
+            client_config['test_case_name'] = self.test_case_name
             client_config['private_key'] = client_private_key
             # add public key to client_public_keys
             client_name = 'Client_'+str(i)
@@ -49,6 +50,7 @@ class Run(process):
         for i, val in enumerate(validators):
             config = {}
             validator_private_key = validator_private_keys[str(val)]
+            config['test_case_name'] = self.test_case_name
             config['private_key'] = validator_private_key
             if i == faulty_leader_index and faulty_leader:
                 config['faulty'] = True
