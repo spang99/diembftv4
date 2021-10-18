@@ -6,6 +6,7 @@ import PaceMaker
 import Safety
 import os
 import sys
+from pathlib import Path
 from time import sleep
 
 config(channel='fifo', clock='Lamport')
@@ -21,7 +22,11 @@ class Validator(process):
         Safety.f = (config['f'])
         Safety.validators = config['validators']
         Safety.validator_map = config['validator_map']
-        Safety.log_path = os.path.abspath('..\\log\\' + Safety.validator_name + '.log')
+        log_folder = Path("./log")
+        os.makedirs(log_folder, exist_ok=True)
+        fname = Safety.validator_name + '.log'
+        Safety.log_path = log_folder / fname
+        # Safety.log_path = os.path.abspath('..\\log\\' + Safety.validator_name + '.log')
         file = open(Safety.log_path, "w")
         file.close()
         LeaderElection.setup_LeaderElection()  # Must be called after Safety is setup
