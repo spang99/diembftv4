@@ -3,6 +3,7 @@ import nacl.hash
 import os
 from nacl.signing import SigningKey
 from nacl.signing import VerifyKey
+from pathlib import Path
 from time import sleep
 
 config(channel='fifo', clock='Lamport')
@@ -37,7 +38,11 @@ class Client(process):
         self.replies = {}
         self.f = config['f']  # faulty validators
         self.timeout = config['timeout']  # wait for 2f+1 replies
-        self.log_path = os.path.abspath('..\\log\\' + self.client_name + '.log')
+        log_folder = Path("./log")
+        os.makedirs(log_folder, exist_ok=True)
+        fname = self.client_name + '.log'
+        self.log_path = log_folder / fname
+        # self.log_path = os.path.abspath('..\\log\\' + self.client_name + '.log')
         file = open(self.log_path, "w")
         file.close()
         self.client_log("Initialized from config:", f"client_name: {config['client_name']}")
