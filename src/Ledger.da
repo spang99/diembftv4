@@ -8,13 +8,10 @@ from pathlib import Path
 
 u = None
 filename = None
-# f = open(filename, "w+")
-# f.close()
 commits = {}
 q_size = 35  # no of committed blocks remembered
 commit_queue = deque()  # stores the last q_size committed blocks
 state_id = {}  # description below:
-filename = None
 
 
 # stores exec_state_id with index as block_id
@@ -39,31 +36,11 @@ def setup_Ledger():
 
 def speculate(prev_block_id, block_id, txns):
     global state_id
-    # print(f"{Safety.validator_id}: In function: Ledger.speculate.")
-
-    # if BlockTree.pending_block_tree[1].root is prev_block_id:
-    #    state_id[block_id] = nacl.hash.sha256([state_id[prev_block_id], txns],
-    #                                          encoder=nacl.encoding.HexEncoder)
-    # else:
-    #    print("Inconsistency in validator: {u}")
-
-    # Apply transactions speculatively and add to speculative ledger state
     state_id[block_id] = nacl.hash.sha256(
         (state_id[prev_block_id] + txns).encode()).decode()
 
 
 def commit(block_id):
-    # print(f"{Safety.validator_id}: In function: Ledger.commit")
-    # if block_id in BlockTree.pending_block_tree.blocks:
-    # bl = BlockTree.pending_block_tree[0].blocks[block_id]
-    # f = open(filename, "a")
-    # f.append(bl.payload)
-    # f.close()
-    # commits[block_id] = bl
-    # deque.append(bl)
-    # print("Committed block {block_id}")
-    # return state_id
-
     if block_id not in BlockTree.pending_block_tree:
         # print(f"{Safety.validator_id}: Invalid block id to commit")
         return
