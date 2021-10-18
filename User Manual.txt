@@ -8,7 +8,4 @@ To run the program, go to the directory diembftv4\src
 // this is tentative: will need to change to match implementation
 
 client:
-python -m da Client.da
-
-replicas:
-python -m da Validator.da
+python -m da --logfilename diem.log --logfilelevel info --message-buffer-size 6400000 .\Test.da
