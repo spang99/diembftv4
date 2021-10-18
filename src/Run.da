@@ -62,7 +62,7 @@ class Run(process):
             config['client_map'] = client_map
             config['validator_name'] = "Validator_" + str(i)
             config['parent'] = self
-            # print(f"Calling setup for validator {i}")
+            config['client_keys'] = client_public_keys
             setup(val, (validators - {val}, 0, config))
 
         start(validators)

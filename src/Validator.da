@@ -19,6 +19,7 @@ class Validator(process):
         self.parent = config['parent']
         global public_keys
         self.public_keys = config['public_keys']
+        self.client_keys = config['client_keys']
         Safety.set_private_key(config['private_key'])
         Safety.set_public_keys(config['public_keys'])
         Safety.validator_id = str(self)
@@ -57,7 +58,7 @@ class Validator(process):
                    f"clients: {config['client_map']}")
         Safety.log("Initialized from config:", f"faulty: {config['faulty']}")
 
-    # verify a signature
+    # verify a validator signature
     def validate_signature(sender, signature):
         if sender not in public_keys:
             return False
@@ -65,7 +66,8 @@ class Validator(process):
         try:
             valid_signature = sender_public_key.verify(signature)
         except BadSignatureError:
-            Safety.log("Discarding message: Signature was forged or corrupted.")
+            Safety.log("Discarding message:",
+                       "Signature was forged or corrupted.")
             return False
         return True
 
@@ -298,6 +300,20 @@ class Validator(process):
         # output(f"Received request from {sender}.")
         Safety.log("Received Request:",
                    f"sender: {sender}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
+        # verify client signature
+        client_name = req.cmd.split('-')[0]
+        if client_name not in client_keys:
+            Safety.log("Discarding Request:", "Unrecognized Client.")
+            return
+        client_public_key = client_keys[client_name]
+        try:
+            valid_signature = client_public_key.verify(req.signature)
+        except BadSignatureError:
+            Safety.log("Discarding message:",
+                       "Signature was forged or corrupted.")
+            return
+
+        # Add request to pool or send cached reply if already executed
         Reply = MemPool.add_request(req)
         if Reply:
             # request already committed, send cached response
