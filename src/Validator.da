@@ -161,10 +161,8 @@ class Validator(process):
         # PSEUDOCODE: if P.block.round != round or P.sender != leader or P.block.author != leader then
         #               return
         if (P.block.round != current_round) or (sender != leader) or (P.block.author != str(leader)):
-            #output("Error here")
             Safety.log("Dropping Proposal due to inconsistent metadata:",
                        f"Block Round:{P.block.round},Current Round:{current_round},Sender:{str(sender)},Leader:{str(leader)},Block Author: {P.block.author}")
-            #print(P.block.round, current_round, str(leader),str(sender), P.block.author, leader)
             # remove it from requests and pending?
             MemPool.remove_from_requests(P.block.payload)
             MemPool.pending_requests.remove(P.block.payload)
@@ -178,14 +176,12 @@ class Validator(process):
 
         # PSEUDOCODE: if vote_msg != None then
         if vote_msg is not None:
-            # output(f"Sending vote to leader of round {current_round+1}: {LeaderElection.get_leader(current_round+1)}.")
 
             # PSEUDOCODE: send vote_msg to LeaderElection.get_leader(current_round + 1)
             Safety.log(f"Sending VoteMsg:", f"{vote_msg}")
             send(("VoteMsg", vote_msg),
                  to=LeaderElection.get_leader(current_round + 1))
         else:
-            #output(f"Empty vote message.")
             pass
 
     # PSEUDOCODE: Procedure process_timeout_msg(M)
@@ -215,11 +211,9 @@ class Validator(process):
         if tc:
             # PSEUDOCODE: PaceMaker.advance_round(tc)
             if PaceMaker.advance_round_tc(tc):
-                #output(f"Advancing, but not starting, round because of tc.")
                 Safety.log("Advancing round because of tc.", "")
                 round_stop = True
                 if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
-                    #output(f"Starting round {PaceMaker.current_round} timer because of pending request. {MemPool.pending_requests}, commits:{[x.payload for x in Ledger.commits.values()]}")
                     Safety.log(
                         f"Starting round {PaceMaker.current_round} timer because of pending request(s):", f"{MemPool.pending_requests}")
                     round_start = True
@@ -228,7 +222,6 @@ class Validator(process):
             process_new_round_event(tc)
         elif M:
             round_stop = True
-            #output("Stopping round due to bracha timeout.")
             Safety.log("Stopping round due to bracha timeout.", "")
             Safety.log("Sending TimeoutMsg:", f"{M}")
             send(("TimeoutMsg", M), to=validators)
@@ -254,10 +247,7 @@ class Validator(process):
 
     # PSEUDOCODE: Procedure process_new_round_event(last_tc)
     def process_new_round_event(last_tc):
-        # output(f'In function: process_new_round_event.')
         current_round = PaceMaker.current_round
-
-        # output(f"The leader for round {current_round} is {leader}")
 
         # PSEUDOCODE: if u = LeaderElection.get_leader(PaceMaker.current_round) then
         if self == LeaderElection.get_leader(PaceMaker.current_round):
@@ -266,11 +256,9 @@ class Validator(process):
                 # No pending requests (pending = submitted but not yet proposed or committed)
                 # wait for requests to come in
 
-                # output("Waiting for requests/transactions to be submitted by clients...")
                 -- wait_for_requests
                 await((len(MemPool.pending_requests) > 1 ^ (
                     '' not in MemPool.pending_requests)) or MemPool.progress_pending_cmd or run_done)
-                # await((len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests)) or run_done)
             if run_done:
                 # allow validator to exit
                 return
@@ -319,7 +307,6 @@ class Validator(process):
         PaceMaker.local_timeout_round()
 
     def receive(msg=('Request', req), from_=sender):
-        # output(f"Received request from {sender}.")
         Safety.log("Received Request:",
                    f"sender: {sender}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
         # verify client signature
@@ -349,28 +336,24 @@ class Validator(process):
 
     def receive(msg=('RunDone',), from_=p):
         run_done = True
-        Safety.log("Received RunDone:", f"sender: {sender}")
+        Safety.log("Received RunDone:", f"sender: {p}")
 
     def run(self):
         output("Starting up...")
         self.process_new_round_event(None)  # jumpstart algorithm
-        # await(run_done and len(MemPool.pending_requests) == 0)
         while not run_done:
             while not round_start:
                 -- process_messages_while_waiting_to_start_round
                 if run_done:
                     break
                 pass
-            #output(f"Round {PaceMaker.current_round} started.")
             Safety.log("Round:", f"{PaceMaker.current_round} started.")
             round_start = False
             timer_duration = PaceMaker.get_round_timer(PaceMaker.current_round)
             if await round_stop:
-                #output(f"Round {PaceMaker.current_round} stopped.")
                 Safety.log("Round:", f"{PaceMaker.current_round} stopped.")
                 pass
             elif timeout(timer_duration):
-                #output(f"Timing out in round {PaceMaker.current_round}")
                 Safety.log("Timing out in round:",
                            f"{PaceMaker.current_round}.")
                 M = PaceMaker.local_timeout_round()
@@ -378,6 +361,5 @@ class Validator(process):
                 send(("TimeoutMsg", M), to=validators.union({self}))
 
         output(f"Exiting: {Safety.validator_name}")
-        # Safety.log_file.close()
         Safety.log("Exit:", Safety.validator_name)
         send(('Exiting',), to=parent)
