@@ -284,6 +284,7 @@ def process_vote(v):  # v is of type VoteMsg
             #     vote_info <- v.vote_info,
             #     state_id <- v.state_id,
             #     votes <- pending_votes[vote_idx]))
+            Safety.log("Making QC,", "")
             qc = QC(v.vote_info, v.ledger_commit_info, pending_votes[vote_idx],
                     Safety.validator_id)
             # print(f'{Safety.validator_id}: Created quorum certificate')
