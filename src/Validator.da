@@ -18,19 +18,18 @@ class Validator(process):
         # output("Setting up validator")
         self.test_case_name = config['test_case_name']
         self.parent = config['parent']
-        global public_keys
         self.public_keys = config['public_keys']
         self.client_keys = config['client_keys']
         Safety.set_private_key(config['private_key'])
         Safety.set_public_keys(config['public_keys'])
-        Safety.validator_id = str(self)
-        Safety.validator_name = config['validator_name']
+        Safety.validator_id = config['validator_id']
         Safety.f = (config['f'])
-        Safety.validators = config['validators']
-        Safety.validator_map = config['validator_map']
+        Safety.validator_ids = config['validator_ids']
+        Safety.validator_id_to_process = config['validator_id_to_process']
+        Safety.validator_process_to_id = config['validator_process_to_id']
         log_folder = Path("./log")
         os.makedirs(log_folder, exist_ok=True)
-        fname = self.test_case_name + '_' + Safety.validator_name + '.log'
+        fname = self.test_case_name + '_' + Safety.validator_id + '.log'
         Safety.log_path = log_folder / fname
         file = open(Safety.log_path, "w")
         file.close()
@@ -38,12 +37,13 @@ class Validator(process):
         BlockTree.setup_BlockTree()  # Must be called after Safety is setup
         ledger_folder = Path("./ledgers")
         os.makedirs(ledger_folder, exist_ok=True)
-        fname = self.test_case_name + "_database_" + Safety.validator_name + ".ledger"
+        fname = self.test_case_name + "_database_" + Safety.validator_id + ".ledger"
         Ledger.filename = ledger_folder / fname
         file = open(Ledger.filename, 'w')
         file.close()
         Ledger.setup_Ledger()  # Must be called after Safety is setup
-        MemPool.clients = config['client_map']
+        MemPool.client_id_to_process = config['client_id_to_process']
+        MemPool.client_process_to_id = config['client_process_to_id']
         self.run_done = False
         self.round_start = False
         self.round_stop = False
@@ -54,23 +54,18 @@ class Validator(process):
                    f"private_key: {config['private_key']}")
         Safety.log("Initialized from config:",
                    f"public_keys: {config['public_keys']}")
-        Safety.log("Initialized from config:", f"validator_id: {str(self)}")
         Safety.log("Initialized from config:",
-                   f"validator_name: {config['validator_name']}")
+                   f"validator_id: {config['validator_id']}")
         Safety.log("Initialized from config:", f"f: {config['f']}")
         Safety.log("Initialized from config:",
-                   f"validators: {config['validators']}")
-        Safety.log("Initialized from config:",
-                   f"validator_map: {config['validator_map']}")
-        Safety.log("Initialized from config:",
-                   f"clients: {config['client_map']}")
-        Safety.log("Initialized from config:", f"faulty: {config['faulty']}")
+                   f"clients: {config['client_id_to_process']}")
+        Safety.log("Initialized from config:", f"faulty: {config['faulty']}\n")
 
     # verify a validator signature
-    def validate_signature(sender, signature):
-        if sender not in public_keys:
+    def validate_signature(sender_id, signature):
+        if sender_id not in public_keys:
             return False
-        sender_public_key = public_keys[sender]
+        sender_public_key = public_keys[sender_id]
         try:
             valid_signature = sender_public_key.verify(signature)
         except BadSignatureError:
@@ -79,20 +74,15 @@ class Validator(process):
             return False
         return True
 
-    # sends a message to another validator
-    def send_message(msg_type, msg_object, recipient):
-        send((msg_type, msg_object), to=recipient)
-        # Safety.log("Sent message:", f"{msg_type}: {str(msg_object)} to {recipient}")
-
     def send_reply(cmd):
-        result = "Your cmd: " + cmd[:-1] + \
-            " was committed by " + Safety.validator_name
+        result = "Your cmd: " + cmd + " was committed by " + Safety.validator_id
         client_str = cmd.split('-')[0]
         reqid = int(cmd.split('-')[1])
-        client = MemPool.clients[client_str]
+        client = MemPool.client_id_to_process[client_str]
         MemPool.cache_reply(cmd, result)
         # output(f"Sending reply to {client} for {cmd}")
-        Safety.log("Sent Reply:", f"recipient: {client} command: {cmd}")
+        Safety.log(
+            "Sent Reply:", f"recipient: {MemPool.client_process_to_id[client]} command: {cmd}")
         send(('Reply', (reqid, result)), to=client)
 
     # PSEUDOCODE: Procedure process_certificate_qc(qc)
@@ -101,7 +91,6 @@ class Validator(process):
         if qc is None:
             # output("Empty qc")
             return
-        # output(f'In function: process_certificate_qc.')
 
         # PSEUDOCODE: Block-Tree.process_qc(qc)
         committed_request = BlockTree.process_qc(qc)
@@ -116,7 +105,6 @@ class Validator(process):
         # PSEUDOCODE: PaceMaker.advance_round(qc.vote_info.round)
         if PaceMaker.advance_round_qc(qc):
             round_stop = True
-            #output(f"Stopping round because of qc.")
             Safety.log(
                 f"Stopping round {PaceMaker.current_round-1} because of qc.", "")
             if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
@@ -129,7 +117,7 @@ class Validator(process):
     # PSEUDOCODE: Procedure process_proposal_msg(P)
     def process_proposal_msg(P, sender):
         # signature verification
-        if validate_signature(str(sender), P.signature) == False:
+        if validate_signature(Safety.validator_process_to_id[sender], P.signature) == False:
             return
         # check the signatures contained within the proposal using function from safety module
         if (Safety.valid_signatures(P.block.qc, P.last_round_tc) == False or Safety.valid_signatures(P.high_commit_qc, None) == False):
@@ -160,7 +148,7 @@ class Validator(process):
 
         # PSEUDOCODE: if P.block.round != round or P.sender != leader or P.block.author != leader then
         #               return
-        if (P.block.round != current_round) or (sender != leader) or (P.block.author != str(leader)):
+        if (P.block.round != current_round) or (sender != Safety.validator_id_to_process[leader]) or (P.block.author != leader):
             Safety.log("Dropping Proposal due to inconsistent metadata:",
                        f"Block Round:{P.block.round},Current Round:{current_round},Sender:{str(sender)},Leader:{str(leader)},Block Author: {P.block.author}")
             # remove it from requests and pending?
@@ -178,9 +166,10 @@ class Validator(process):
         if vote_msg is not None:
 
             # PSEUDOCODE: send vote_msg to LeaderElection.get_leader(current_round + 1)
+            next_rnd_leader = LeaderElection.get_leader(current_round+1)
             Safety.log(f"Sending VoteMsg:", f"{vote_msg}")
             send(("VoteMsg", vote_msg),
-                 to=LeaderElection.get_leader(current_round + 1))
+                 to=Safety.validator_id_to_process[next_rnd_leader])
         else:
             pass
 
@@ -250,7 +239,7 @@ class Validator(process):
         current_round = PaceMaker.current_round
 
         # PSEUDOCODE: if u = LeaderElection.get_leader(PaceMaker.current_round) then
-        if self == LeaderElection.get_leader(PaceMaker.current_round):
+        if Safety.validator_id == LeaderElection.get_leader(PaceMaker.current_round):
             # if no pending transactions, don't propose empty blocks, but rather wait for requests to come in
             if len(MemPool.pending_requests) == 0:
                 # No pending requests (pending = submitted but not yet proposed or committed)
@@ -286,29 +275,30 @@ class Validator(process):
     # PSEUDOCODE: if M is a proposal message then process_proposal_msg(M)
     def receive(msg=("ProposalMsg", P), from_=sender):
         Safety.log("Received ProposalMsg:",
-                   f"sender: {sender}, block: {P.block}, block_author: {P.block.author}, block_round: {P.block.round}, block_payload: {P.block.payload}, block_qc: {P.block.qc}, block_id: {P.block.id} last_round_tc: {P.last_round_tc}, high_commit_qc: {P.high_commit_qc}, signature: {P.signature}")
+                   f"{{ sender: {Safety.validator_process_to_id[sender]}, Block: {{ {P.block} }}, last_round_tc: {{ {P.last_round_tc} }}, high_commit_qc: {{ {P.high_commit_qc} }}, signature: {P.signature} }}")
         process_proposal_msg(P, sender)
 
     # PSEUDOCODE: if M is a timeout message then process_timeout_message(M)
     def receive(msg=("TimeoutMsg", M), from_=sender):
         Safety.log("Received TimeoutMsg:",
-                   f"sender: {sender}, tmo_info:{M.tmo_info}, tmo_info_round: {M.tmo_info.round}, tmo_info_high_qc: {M.tmo_info.high_qc}, tmo_info_sender: {M.tmo_info.sender}, tmo_info_signature: {M.tmo_info.signature}, last_round_tc: {M.last_round_tc}, high_commit_qc: {M.high_commit_qc}")
+                   f"{{ sender: {Safety.validator_process_to_id[sender]}, tmo_info: {{ {M.tmo_info} }}, last_round_tc: {{ {M.last_round_tc} }}, high_commit_qc: {{ {M.high_commit_qc} }} }}")
         process_timeout_msg(M)
 
     # PSEUDOCODE: if M is a vote message then process_vote_msg(M)
     def receive(msg=("VoteMsg", M), from_=sender):
         Safety.log("Received VoteMsg:",
-                   f"sender: {sender}, vote_info: {M.vote_info}, vote_info_id: {M.vote_info.id}, vote_info_round: {M.vote_info.round}, vote_info_parent_id: {M.vote_info.parent_id}, vote_info_exec_state_id: {M.vote_info.exec_state_id}, ledger_commit_info: {M.ledger_commit_info}, high_commit_qc: {M.high_commit_qc}, signature: {M.signature}")
+                   f"{{ sender: {Safety.validator_process_to_id[sender]}, vote_info: {{ {M.vote_info} }}, ledger_commit_info: {{ {M.ledger_commit_info} }}, high_commit_qc: {{ {M.high_commit_qc} }}, signature: {M.signature} }}")
         process_vote_msg(M)
 
     # PSEUDOCODE: if M is a local timeout then Pacemaker.local_timeout_round()
     def receive(msg=("LocalTimeout", M), from_=sender):
-        Safety.log("Received LocalTimeout:", f"sender: {sender}, message:{M}")
+        Safety.log("Received LocalTimeout:",
+                   f"sender: {Safety.validator_process_to_id[sender]}, message:{M}")
         PaceMaker.local_timeout_round()
 
     def receive(msg=('Request', req), from_=sender):
         Safety.log("Received Request:",
-                   f"sender: {sender}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
+                   f"sender: {MemPool.client_process_to_id[sender]}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
         # verify client signature
         client_name = req.cmd.split('-')[0]
         if client_name not in client_keys:
@@ -340,6 +330,9 @@ class Validator(process):
 
     def run(self):
         output("Starting up...")
+        Safety.log(
+            "************************** STARTING VALIDATOR ***********************************\n",
+            "        *********************************************************************************\n")
         self.process_new_round_event(None)  # jumpstart algorithm
         while not run_done:
             while not round_start:
@@ -360,6 +353,6 @@ class Validator(process):
                 Safety.log("Sending TimeoutMsg:", f"{M}")
                 send(("TimeoutMsg", M), to=validators.union({self}))
 
-        output(f"Exiting: {Safety.validator_name}")
-        Safety.log("Exit:", Safety.validator_name)
+        output(f"Exiting: {Safety.validator_id}")
+        Safety.log("Exit:", Safety.validator_id)
         send(('Exiting',), to=parent)

@@ -3,7 +3,8 @@ import Safety
 import Validator
 from collections import deque
 
-clients = None
+client_id_to_process = None
+client_process_to_id = None
 
 # pool of submitted but not yet executed requests/transactions
 request_pool = []

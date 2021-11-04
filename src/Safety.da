@@ -17,9 +17,10 @@ _public_keys = None
 
 f = None
 validator_id = None
-validator_name = None
+validator_ids = None
+validator_id_to_process = None
+validator_process_to_id = None
 validators = None
-validator_map = None
 log_path = None
 
 # PSEUDOCODE(highest_vote_round;)
@@ -51,12 +52,6 @@ def get_public_key(val):
         return
     else:
         return _public_keys[val]
-
-
-# set process validator_id (called during setup)
-# def set_validator_id(id):
-# global _validator_id
-# _validator_id = id
 
 
 def _increase_highest_vote_round(round):
@@ -129,7 +124,6 @@ def _commit_state_id_candidate(block_round, qc):
 
 
 def valid_signature(key, signature):
-    # print(f"Inside Safety.valid_signature. {Safety.validator_id}")
     try:
         valid_signature = key.verify(signature)
     except BadSignatureError:
@@ -192,7 +186,6 @@ def valid_signatures(qc, last_tc):
 def make_vote(b, last_tc):
     # b is the block to vote on
     # last_tc is the timeout certificate for the previous round, else ⊥
-    # print(f"{Safety.validator_id}: Inside Safety.make_vote.")
     # PSEUDOCODE(qc_round <- b.qc.vote_info_round)
     qc_round = b.qc.vote_info.round
     # PSEUDOCODE(if valid_signatures(b,  last_tc) and safe_to_vote(b.round, qc_round, last_tc) then)
