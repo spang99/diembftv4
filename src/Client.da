@@ -94,13 +94,12 @@ class Client(process):
             pending_request = True
             while pending_request:
                 if await(len(replies[i]) == 2 * f + 1):
-                    #output(f"{cmd[:-1]} was committed.")
-                    client_log(f"{cmd[:-1]}", "was committed.")
+                    client_log(f"{cmd}", "was committed.")
                     pending_request = False
                     if retransmit:
                         retransmit = False
                         client_log(
-                            f"retransmitting {cmd[:-1]} to test validator caching.", "")
+                            f"retransmitting {cmd} to test validator caching.", "")
                         send(('Request', req), to=validators)
                 elif timeout(timeout):
                     # retransmit request
