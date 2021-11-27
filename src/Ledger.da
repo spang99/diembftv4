@@ -65,11 +65,12 @@ def commit(block_id):
 
 
 # PSEUDOCODE for updating other validators
-# def update_node(block_id):
-#    missing = []
-#    if block_id in commits: #This means block id is in memory
-#        idx = index of block_id in commit_queue
-#        append all transactions from idx+1 onwards to 'missing'
+def update_node(block_id):
+   missing = []
+   if block_id in commits: #This means block id is in memory
+       idx = commit_queue.index(block_id)
+       missing = [commit_queue[i] for i in range(idx, len(commit_queue)-1)]
+   return missing
 #    else: (means block_id is in file)
 #        idx = index of block_id in file
 #        append next transaction onwards till the end of file to missing list

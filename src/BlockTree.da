@@ -183,6 +183,9 @@ def pending_block_tree_prune(newroot_id):
 
     # print(f"\t\t\t\tCURRENT PENDING_BLOCK_TREE:{pending_block_tree}")
 
+def get_updates(block_id):
+    missing = Ledger.update_node(block_id)
+    return missing, pending_block_tree
 
 def process_qc(qc):
     global pending_block_tree, high_commit_qc, high_qc
