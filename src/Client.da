@@ -33,7 +33,7 @@ class Client(process):
         # config is a dictionary with config information
         self.test_case_name = config['test_case_name']
         self.parent = config['parent']
-        self.client_name = config['client_name']
+        self.client_id = config['client_id']
         self.work_load = config["workload"]
         self.retransmit = config["workload"].retransmit
         self.validators = config["validators"]
@@ -43,7 +43,7 @@ class Client(process):
         self.timeout = config['timeout']  # wait for 2f+1 replies
         log_folder = Path("./log")
         os.makedirs(log_folder, exist_ok=True)
-        fname = self.test_case_name + '_' + self.client_name + '.log'
+        fname = self.test_case_name + '_' + self.client_id + '.log'
         self.log_path = log_folder / fname
         # self.log_path = os.path.abspath('..\\log\\' + self.client_name + '.log')
         file = open(self.log_path, "w")
@@ -51,7 +51,7 @@ class Client(process):
         self.client_log("Initialized from config:",
                         f"test_case_name: {config['test_case_name']}")
         self.client_log("Initialized from config:",
-                        f"client_name: {config['client_name']}")
+                        f"client_id: {config['client_id']}")
         # print(str(self.work_load)[1:-2])
         self.client_log("Initialized from config:",
                         f"work_load_delay: {self.work_load.delay}, work_load_num_requests: {self.work_load.numrequests}, work_load_retransmit: {self.work_load.retransmit}")
@@ -78,7 +78,7 @@ class Client(process):
             sleep(work_load.delay)
             # send the request
             client = self
-            cmd = client_name + "-" + str(i) + "\n"
+            cmd = client_id + "-" + str(i)
             req_hash = nacl.hash.sha256(cmd.encode())
             reqid = i
             signature = private_key.sign(req_hash)
@@ -94,13 +94,12 @@ class Client(process):
             pending_request = True
             while pending_request:
                 if await(len(replies[i]) == 2 * f + 1):
-                    #output(f"{cmd[:-1]} was committed.")
-                    client_log(f"{cmd[:-1]}", "was committed.")
+                    client_log(f"{cmd}", "was committed.")
                     pending_request = False
                     if retransmit:
                         retransmit = False
                         client_log(
-                            f"retransmitting {cmd[:-1]} to test validator caching.", "")
+                            f"retransmitting {cmd} to test validator caching.", "")
                         send(('Request', req), to=validators)
                 elif timeout(timeout):
                     # retransmit request

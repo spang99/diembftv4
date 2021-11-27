@@ -5,11 +5,11 @@ import Safety
 import Validator
 import random
 
+validator_ids = None
 # PSEUDOCODE(validators;
 # window_size;
 # exclude_size;
 # reputation_leaders;)
-validators = None
 window_size = None
 exclude_size = None
 reputation_leaders = {}
@@ -17,8 +17,8 @@ reputation_leaders = {}
 
 # Must be called after Safety is setup
 def setup_LeaderElection():
-    global validators, window_size, exclude_size
-    validators = Safety.validators
+    global validator_ids, window_size, exclude_size
+    validator_ids = Safety.validator_ids
     window_size = Safety.f
     exclude_size = Safety.f + 1
 
@@ -50,7 +50,7 @@ def elect_reputation_leader(qc):
         # PSEUDOCODE(if |last_authors| < exclude_size then)
         if len(last_authors) < exclude_size:
             # PSEUDOCODE(last_authors <- last_authors union {block_author})
-            last_authors.append(Safety.validator_map[block_author])
+            last_authors.append(block_author)
         # PSEUDOCODE(current_qc <- current_block.qc)
         current_qc = current_block.qc
         # active_validators -= last_authors
@@ -104,4 +104,4 @@ def get_leader(rnd):
         if leader:
             return leader
     # PSEUDOCODE(return validators[[round/2] mod |validators|])
-    return validators[(rnd // 2) % len(validators)]
+    return validator_ids[(rnd // 2) % len(validator_ids)]

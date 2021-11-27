@@ -8,7 +8,7 @@ from pathlib import Path
 
 u = None
 filename = None
-commits = {} # stores q_size committed blocks for quick retrieval
+commits = {}  # stores q_size committed blocks for quick retrieval
 q_size = 35  # no of committed blocks remembered
 commit_queue = deque()  # stores the last q_size committed blocks
 state_id = {}  # description below:
@@ -44,7 +44,8 @@ def commit(block_id):
         return
     block = BlockTree.pending_block_tree[block_id].block
     f = open(filename, 'a')
-    f.write(block.payload)
+    if block.payload != "":
+        f.write(block.payload+"\n")
     f.close()
 
     commits[block_id] = block  # storing in dictionary for quick retrieval

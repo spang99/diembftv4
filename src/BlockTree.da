@@ -18,6 +18,9 @@ class Block:
         self.id = id
         # print(f'{Safety.validator_id}: Created new Block class')
 
+    def __str__(self):
+        return f"Author: {self.author}, Round: {self.round}, Payload: {self.payload}, ID: {self.id}, QC: {{ {self.qc} }}"
+
 
 class LedgerCommitInfo:
     def __init__(self, commit_state_id, vote_info_hash):
@@ -35,12 +38,15 @@ class ProposalMsg:
         self.signature = Safety.get_private_key().sign(block.id.encode())
         # print(f'{Safety.validator_id}: Created new ProposalMsg class')
 
+    def __str__(self):
+        return f"Block: {{ {self.block} }}, last_round_tc: {{ {self.last_round_tc} }}, high_commit_qc: {{ {self.high_commit_qc} }}"
+
 
 class QC:
     def __init__(self, vote_info, ledger_commit_info, signatures, author):
         self.vote_info = vote_info
         self.ledger_commit_info = ledger_commit_info
-        self.high_commit_qc = high_commit_qc
+        #self.high_commit_qc = high_commit_qc
         self.signatures = signatures
         self.author = author
         # self.author_signature = Safety.signing_key.sign(
@@ -53,14 +59,16 @@ class QC:
         # print(f'{Safety.validator_id}: Created new QC class')
 
     def signers(self):
-        # print(f"{Safety.validator_id}: Inside function BlockTree.QC.signers.")
-        # return signers of this QC (actual process, not just ID)
         try:
-            qc_signers = [Safety.validator_map[val]
-                          for (val, _) in self.signatures]
+            qc_signers = [validator_id for (
+                validator_id, _) in self.signatures]
+            return qc_signers
         except:
-            print(f"Error getting qc signers. {Safety.validator_id}")
-        return qc_signers
+            #print(f"Error getting qc signers. {Safety.validator_id}")
+            return None
+
+    def __str__(self):
+        return f"author: {self.author}, signatures: {self.signers()}, vote_info: {{ {self.vote_info} }} }}"
 
 
 class TimeoutMsg:
@@ -78,6 +86,9 @@ class TC:
         self.tmo_signatures = tmo_signatures
         # print(f'{Safety.validator_id}: Created new TC class')
 
+    def __str__(self):
+        return f"round: {self.round}, tmo_high_qc_rounds: {self.tmo_high_qc_rounds}"
+
 
 class TimeoutInfo:
     def __init__(self, round, high_qc, sender):
@@ -88,6 +99,9 @@ class TimeoutInfo:
         self.signature = Safety.get_private_key().sign((round, high_qc.vote_info.round))
         # print(f'{Safety.validator_id}: Created new TimeoutInfo class')
 
+    def __str__(self):
+        return f"sender: {self.sender}, round: {self.round}, high_qc: {{ {self.high_qc} }}, signature: {self.signature}"
+
 
 class VoteInfo:
     def __init__(self, id, round, parent_id, parent_round, exec_state_id):
@@ -97,6 +111,9 @@ class VoteInfo:
         self.parent_round = parent_round
         self.exec_state_id = exec_state_id
         # print(f'{Safety.validator_id}: Created new VoteInfo class')
+
+    def __str__(self):
+        return f"id: {self.id}, round: {self.round}, parent_id: {self.parent_id}, parent_round: {self.parent_round}, exec_state_id: {self.exec_state_id}"
 
 
 class VoteMsg:
@@ -208,7 +225,7 @@ def process_qc(qc):
             payload = pending_block_tree[qc.vote_info.parent_id].block.payload
             MemPool.pending_requests.remove(
                 payload)
-            if Safety.validator_id == str(LeaderElection.get_leader(PaceMaker.current_round + 1)) and len(
+            if Safety.validator_id == LeaderElection.get_leader(PaceMaker.current_round + 1) and len(
                     MemPool.pending_requests) == 0 and payload != '':
                 # Since this may empty the pending requests pool, leader may not propose an empty block to allow other
                 # validators who don't have this qc to commit the commit_state_id. This variable ensures other validators
@@ -287,6 +304,7 @@ def process_vote(v):  # v is of type VoteMsg
             #     vote_info <- v.vote_info,
             #     state_id <- v.state_id,
             #     votes <- pending_votes[vote_idx]))
+            Safety.log("Making QC,", "")
             qc = QC(v.vote_info, v.ledger_commit_info, pending_votes[vote_idx],
                     Safety.validator_id)
             # print(f'{Safety.validator_id}: Created quorum certificate')

@@ -20,20 +20,22 @@ class Run(process):
     def run(self):
         output(f"Running test case: {test_case_name}")
         clients = new(Client.Client, num=num_clients)
-        validators = new(Validator.Validator, num=4)
+        validators = new(Validator.Validator, num=num_validators)
 
         client_public_keys = {}
-        client_map = {}
+        client_id_to_process = {}
+        client_process_to_id = {}
         for i, client in enumerate(clients):
             client_config = {}
             client_private_key = SigningKey.generate()
             client_config['test_case_name'] = self.test_case_name
             client_config['private_key'] = client_private_key
             # add public key to client_public_keys
-            client_name = 'Client_'+str(i)
-            client_public_keys[client_name] = client_private_key.verify_key
-            client_config['client_name'] = client_name
-            client_map[client_name] = client
+            client_id = 'Client_'+str(i)
+            client_public_keys[client_id] = client_private_key.verify_key
+            client_config['client_id'] = client_id
+            client_id_to_process[client_id] = client
+            client_process_to_id[client] = client_id
             client_workload = client_workloads[i]
             client_config['f'] = f
             client_config['validators'] = validators
@@ -42,27 +44,34 @@ class Run(process):
             client_config['parent'] = self
             setup(client, (client_config,))
 
+        validator_ids = [f"Validator_{str(i)}" for i in range(len(validators))]
+        validator_id_to_process = {
+            validator_ids[i]: val for i, val in enumerate(validators)}
+        validator_process_to_id = {v: k for k,
+                                   v in validator_id_to_process.items()}
+
         validator_private_keys = {
-            str(val): SigningKey.generate() for val in validators}
+            validator_id: SigningKey.generate() for validator_id in validator_ids}
         validator_public_keys = {
-            str(val): validator_private_keys[str(val)].verify_key for val in validators}
-        validator_map = {str(val): val for val in validators}
+            validator_id: validator_private_keys[validator_id].verify_key for validator_id in validator_ids}
+
         for i, val in enumerate(validators):
             config = {}
-            validator_private_key = validator_private_keys[str(val)]
             config['test_case_name'] = self.test_case_name
-            config['private_key'] = validator_private_key
+            config['validator_id'] = validator_ids[i]
+            config['private_key'] = validator_private_keys[validator_ids[i]]
             if i == faulty_leader_index and faulty_leader:
                 config['faulty'] = True
             else:
                 config['faulty'] = False
             config['public_keys'] = validator_public_keys
-            config['f'] = 1
+            config['f'] = f
             # has to be list so that PaceMaker can deterministically choose a leader in case of round robin
-            config['validators'] = list(validators)
-            config['validator_map'] = validator_map
-            config['client_map'] = client_map
-            config['validator_name'] = "Validator_" + str(i)
+            config['validator_ids'] = validator_ids
+            config['validator_id_to_process'] = validator_id_to_process
+            config['validator_process_to_id'] = validator_process_to_id
+            config['client_id_to_process'] = client_id_to_process
+            config['client_process_to_id'] = client_process_to_id
             config['parent'] = self
             config['client_keys'] = client_public_keys
             setup(val, (validators - {val}, 0, config))
