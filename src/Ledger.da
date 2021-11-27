@@ -8,7 +8,7 @@ from pathlib import Path
 
 u = None
 filename = None
-commits = {}  # stores q_size committed blocks for quick retrieval
+commits = {} # stores q_size committed blocks for quick retrieval
 q_size = 35  # no of committed blocks remembered
 commit_queue = deque()  # stores the last q_size committed blocks
 state_id = {}  # description below:
@@ -44,8 +44,7 @@ def commit(block_id):
         return
     block = BlockTree.pending_block_tree[block_id].block
     f = open(filename, 'a')
-    if block.payload != "":
-        f.write(block.payload+"\n")
+    f.write(block.payload)
     f.close()
 
     commits[block_id] = block  # storing in dictionary for quick retrieval
@@ -66,7 +65,7 @@ def commit(block_id):
 
 
 # PSEUDOCODE for updating other validators
-def update_node(block_id):
+def get_update_info(block_id):
    missing = []
    if block_id in commits: #This means block id is in memory
        idx = commit_queue.index(block_id)
@@ -76,6 +75,27 @@ def update_node(block_id):
 #        idx = index of block_id in file
 #        append next transaction onwards till the end of file to missing list
 #        append all transactions from commit_queue
+
+def update(missing):
+    for block in missing:
+        f = open(filename, 'a')
+        f.write(block.payload)
+        f.close()
+        block_id = block.id
+        commits[block_id] = block  # storing in dictionary for quick retrieval
+        # appending to commit_queue for updating other nodes if they fall back
+        commit_queue.append(block)
+        # deelete element from commit queue and commits for efficient memory usage
+        if (len(commit_queue) > q_size):
+            # we should store deleted elements in a files
+            # f = open(commits_file, 'a')
+            # f.write(str(commit_queue[0].id)+'------>'+commit_queue[0].txn)
+            # f.close()
+            # commits_file.append()
+            commits.pop(commit_queue[0].id)
+            commit_queue.popleft()
+        Safety.log("Updated Commit Block:", f"block_id: {block_id}")
+
 
 def committed_block(block_id):
     if block_id in commits:
