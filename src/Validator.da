@@ -107,11 +107,13 @@ class Validator(process):
             round_stop = True
             Safety.log(
                 f"Stopping round {PaceMaker.current_round-1} because of qc.", "")
-            if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
+            # if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
+            if (MemPool.block_pending or MemPool.request_pool):
                 # start new round timer
                 #output(f"Starting round {PaceMaker.current_round} timer because of pending request. {MemPool.pending_requests}, commits:{[x.payload for x in Ledger.commits.values()]}")
+                #Safety.log(f"Starting round {PaceMaker.current_round} timer because of pending request(s):", f"{MemPool.pending_requests}")
                 Safety.log(
-                    f"Starting round {PaceMaker.current_round} timer because of pending request(s):", f"{MemPool.pending_requests}")
+                    f"Starting round {PaceMaker.current_round} timer because of pending request(s).", "")
                 round_start = True
 
     # PSEUDOCODE: Procedure process_proposal_msg(P)
@@ -126,7 +128,7 @@ class Validator(process):
         # remove the request from your request pool so you don't propose it again
         MemPool.remove_from_requests(P.block.payload)
         # add to pending requests
-        MemPool.pending_requests.add(P.block.payload)
+        # MemPool.pending_requests.add(P.block.payload)
 
         # PSEUDOCODE: process_certificate_qc(P.block.qc)
         process_certificate_qc(P.block.qc)
@@ -137,7 +139,8 @@ class Validator(process):
         # PSEUDOCODE: PaceMaker.advance_round_tc(P.last_round_tc)
         if PaceMaker.advance_round_tc(P.last_round_tc):
             round_stop = True
-            if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
+            # if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
+            if (MemPool.block_pending or MemPool.request_pool):
                 round_start = True
 
         # PSEUDOCODE: round <- PaceMaker.current_round
@@ -153,7 +156,7 @@ class Validator(process):
                        f"Block Round:{P.block.round},Current Round:{current_round},Sender:{str(sender)},Leader:{str(leader)},Block Author: {P.block.author}")
             # remove it from requests and pending?
             MemPool.remove_from_requests(P.block.payload)
-            MemPool.pending_requests.remove(P.block.payload)
+            # MemPool.pending_requests.remove(P.block.payload)
             return
 
         # PSEUDOCODE: Block-Tree.execute_and_insert(P)
@@ -190,7 +193,9 @@ class Validator(process):
         # PSEUDOCODE: PaceMaker.advance_round_tc(M.last_round_tc)
         if PaceMaker.advance_round_tc(M.last_round_tc):
             round_stop = True
-            if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
+            # Advance round tc -> you will fork at last committed block. Now pending blocks as of yet
+            # if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
+            if (MemPool.block_pending or MemPool.request_pool):
                 round_start = True
 
         # PSEUDOCODE: tc <- PaceMaker.process_remote_timeout(M)
@@ -202,9 +207,11 @@ class Validator(process):
             if PaceMaker.advance_round_tc(tc):
                 Safety.log("Advancing round because of tc.", "")
                 round_stop = True
-                if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
+                # if len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests):
+                if (MemPool.block_pending or MemPool.request_pool):
+                    #Safety.log(f"Starting round {PaceMaker.current_round} timer because of pending request(s):", f"{MemPool.pending_requests}")
                     Safety.log(
-                        f"Starting round {PaceMaker.current_round} timer because of pending request(s):", f"{MemPool.pending_requests}")
+                        f"Starting round {PaceMaker.current_round} timer because of pending request(s):", "")
                     round_start = True
 
             # PSEUDOCODE: process_new_round_event(tc)
@@ -235,19 +242,21 @@ class Validator(process):
             process_new_round_event(None)
 
     # PSEUDOCODE: Procedure process_new_round_event(last_tc)
+
     def process_new_round_event(last_tc):
         current_round = PaceMaker.current_round
-
+        Safety.log("IN NEW ROUND.",
+                   f"Block Pending: {MemPool.block_pending},  Pool: {MemPool.request_pool}")
         # PSEUDOCODE: if u = LeaderElection.get_leader(PaceMaker.current_round) then
         if Safety.validator_id == LeaderElection.get_leader(PaceMaker.current_round):
             # if no pending transactions, don't propose empty blocks, but rather wait for requests to come in
-            if len(MemPool.pending_requests) == 0:
+            if ((not MemPool.block_pending) and (not MemPool.request_pool)):
                 # No pending requests (pending = submitted but not yet proposed or committed)
                 # wait for requests to come in
 
                 -- wait_for_requests
-                await((len(MemPool.pending_requests) > 1 ^ (
-                    '' not in MemPool.pending_requests)) or MemPool.progress_pending_cmd or run_done)
+                # await((len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests)) or MemPool.progress_pending_cmd or run_done)
+                await((MemPool.block_pending or MemPool.request_pool) or run_done or MemPool.progress_pending_cmd)
             if run_done:
                 # allow validator to exit
                 return
@@ -354,5 +363,7 @@ class Validator(process):
                 send(("TimeoutMsg", M), to=validators.union({self}))
 
         output(f"Exiting: {Safety.validator_id}")
+        Safety.log("My Commits: ",
+                   f"{[b.payload for b in Ledger.commits.values()]}")
         Safety.log("Exit:", Safety.validator_id)
         send(('Exiting',), to=parent)
