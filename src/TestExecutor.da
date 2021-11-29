@@ -1,0 +1,58 @@
+import NetworkPlayground
+
+
+def twin(leader, nodes, twin_nodes):
+    idx = nodes.index(leader)
+    if idx >= len(twin_nodes):
+        return None
+    return twin_nodes[idx]
+
+
+def is_safe(commits):
+    if len(commits) == 0:
+        return True
+    for i in range(0, len(commits) - 1):
+        if commits[i] != commits[i + 1]:
+            return False
+    return True
+
+
+def executeScenario(nodes, target_nodes, round_partitions, round_leaders):
+    # nodes = DiemRun.initialize(num_nodes + target_nodes)
+    #     if round_partitions and round_leaders are null then read from file test_cases.txt
+    if round_partitions is null and round_leaders is null:
+        f = open('test_cases.txt', a)
+        round_partitions, round_leaders = f.read()
+
+    msg_type_drops = []  # specifies which message should be dropped for a particular round
+    intra_partition_drops = []  # specifies whether an intra-partition message should be dropped
+
+    for i in range(1, len(round_partitions)):
+        if i % 5 == 0:
+            msg_type_drops[i] = 'V'
+        if i % 7 == 0:
+            msg_type_drops[i] = 'P'
+        if i % 10 == 0:
+            intra_partition_drops[i] = True
+
+    NetworkPlayground.initialize(nodes, target_nodes, round_partitions, round_leaders)
+    commits = []
+    i = 0
+    while is_safe(commits) and i < len(round_partitions):
+        num_msg = 0
+        for partitions in round_partitions:
+            for partition in partitions:
+                if (round_leaders[i] in partition) or (twin(round_leaders[i], nodes, target_nodes) in partition):
+                    num_msg += 1
+        # NetworkPlayground.get_proposal_message(num_msg, "ProposalMsg")
+        # # implement synchronously in the NetworkPlayground module
+        # NetworkPlayground.collect_votes()  # implement synchronously in the NetworkPlayground module
+        # commits = NetworkPlayground.get_commits()  # return a dictionary of nodeID vs commit_id
+        # i += 1
+        NetworkPlayground.wait_for_messages(num_msg, "ProposalMsg")
+        NetworkPlayground.wait_for_messages(2 * len(target_nodes) + 1,
+                                            'VoteMsg') or NetworkPlayground.wait_for_messages(2 * len(target_nodes) + 1,
+                                                                                              'TimeoutMsg')
+        commit_state = NetworkPlayground.get_commits()  # return a dictionary of nodeID vs commit_id
+        i += 1
+    return
