@@ -5,7 +5,17 @@ all_parts = set()
 all_parts_list = []
 honest_leaders = [] #= ['A', 'B', 'C', 'D']
 twins = [] #= ['X']
-all_leaders = []#= ['A', 'B', 'C', 'D', 'X']
+all_leaders = [] #= ['A', 'B', 'C', 'D', 'X']
+
+def set_to_list(partitions):
+    ans = []
+    for partition in partitions:
+        temp = []
+        for part in partition:
+            temp.append(list(part))
+        ans.append(temp)
+    return ans
+
 def createPartitions(processes, pos, k, parts, st):
     global all_parts
     # print(k)
@@ -46,7 +56,8 @@ def createAllPartitions():
     for i,perm in enumerate(permutations_list):
         # print(f'Creating partitions for {perm}')
         createPartitions(perm, 0, 1, [], [])
-    all_parts_list = list(all_parts)
+    all_parts_list = set_to_list(all_parts)
+
     return
 
 def initialize(honest_nodes, twin_nodes):
@@ -60,7 +71,6 @@ def get_twin(node):
     idx = all_leaders.index(node)
     if (idx >= len(twins)):
         return None
-    print(f'twin of {node} is {twins[idx]}')
     return twins[idx]
 
 # def deterministic_select(no_of_parts, honest_nodes, twin_nodes, rnds):
@@ -90,15 +100,11 @@ def get_twin(node):
 #     return
 
 def select_leaders(num_leaders_req, is_random):
-    # idx_set = [] #keeps track of indices used
     ret_leaders = [] #list of (list of) leaders
     if is_random is True:
         while len(ret_leaders) < num_leaders_req:
             temp = []
             idx = random.randint(0, len(all_leaders))
-            # print('Random index')
-            #add leader and check for twin
-            # print('idx not in idx_set')
             temp.append(all_leaders[idx%len(all_leaders)])
             tw = get_twin(all_leaders[idx%len(all_leaders)])
             if tw is not None:
@@ -124,20 +130,43 @@ def select_partitions(no_of_parts, num_partitions, is_random):
         while (len(idx_set) < num_partitions):
             idx = random.randint(0, len(all_parts)-1)
             if idx not in idx_set:
-                tests.append(all_parts_list[idx%len(all_parts)])
+                tests.append(all_parts_list[idx%len(all_parts_list)])
                 idx_set.add(idx)
     else:
         for parts_set in all_parts:
-            if len(parts_set) == no_of_parts:
+            if len(parts_set) in no_of_parts:
                 tests.append(list(parts_set))
     return tests
 
-initialize(['A', 'B', 'C', 'D'], ['X'])
-createAllPartitions()
-print(all_parts)
-print(len(all_parts))
-print(len(all_parts_list))
-my_leaders = select_leaders(10, True)
-my_parts = select_partitions(2, 10, False)
-print(my_leaders)
-print(my_parts)
+def select_test_configurations(no_of_parts, num_partitions, is_partition_random, num_leaders_req, is_leader_random, rounds):
+    #select leader
+    tests = [] #stores test configurations
+    # nodes = all_leaders
+    i = 0
+    temp_tests = select_partitions(no_of_parts, num_partitions, is_partition_random)
+    temp_leaders = select_leaders(num_leaders_req, is_leader_random)
+    # print(temp_leaders)
+
+    idx_set = set() # Keeps track of used numbers for rounds
+    ret_leaders = [] # leader assignment for each round
+    ret_tests = [] # test assignment for each round
+    while len(ret_tests) < rounds-2:
+        idx = random.randint(0, rounds)
+        if idx not in idx_set:
+            ret_tests.append(temp_tests[idx%len(temp_tests)])
+            ret_leaders.append(temp_leaders[idx%len(temp_leaders)])
+            idx_set.add(idx)
+
+    # the last test cases should not result in timeouts
+    half = int(len(honest_leaders)/2)
+
+    ret_tests.append([honest_leaders[0:half], honest_leaders[half+1:]])
+    ret_leaders.append([honest_leaders[len(twins)]])
+    ret_tests.append([honest_leaders[0:half-1], honest_leaders[half:]])
+    ret_leaders.append([honest_leaders[half+1]])
+
+    f = open("test_cases.txt", 'w')
+    f.write(str(ret_tests) + '\n' + str(ret_leaders))
+    # f.write(str(ret_leaders) + '\n')
+    f.close()
+    return
