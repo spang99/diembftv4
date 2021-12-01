@@ -1,7 +1,7 @@
 import NetworkPlayground
 
 
-def twin(leader, nodes, twin_nodes):
+def get_twin(leader, nodes, twin_nodes):
     idx = nodes.index(leader)
     if idx >= len(twin_nodes):
         return None
@@ -20,9 +20,10 @@ def is_safe(commits):
 def executeScenario(nodes, target_nodes, round_partitions, round_leaders):
     # nodes = DiemRun.initialize(num_nodes + target_nodes)
     #     if round_partitions and round_leaders are null then read from file test_cases.txt
-    if round_partitions is null and round_leaders is null:
+    if round_partitions is None and round_leaders is None:
         f = open('test_cases.txt', a)
-        round_partitions, round_leaders = f.read()
+        round_partitions = f.read()
+        round_leaders = f.read()
 
     msg_type_drops = []  # specifies which message should be dropped for a particular round
     intra_partition_drops = []  # specifies whether an intra-partition message should be dropped
@@ -42,7 +43,7 @@ def executeScenario(nodes, target_nodes, round_partitions, round_leaders):
         num_msg = 0
         for partitions in round_partitions:
             for partition in partitions:
-                if (round_leaders[i] in partition) or (twin(round_leaders[i], nodes, target_nodes) in partition):
+                if (round_leaders[i] in partition) or (get_twin(round_leaders[i], nodes, target_nodes) in partition):
                     num_msg += 1
         # NetworkPlayground.get_proposal_message(num_msg, "ProposalMsg")
         # # implement synchronously in the NetworkPlayground module
