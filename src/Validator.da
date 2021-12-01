@@ -48,6 +48,9 @@ class Validator(process):
         self.round_start = False
         self.round_stop = False
         self.faulty = config['faulty']
+        self.drop_count = 0
+        self.to_drop = 28
+        self.sync_up_collection = {}
         Safety.log("Initialized from config:",
                    f"test_case_name: {config['test_case_name']}")
         Safety.log("Initialized from config:",
@@ -84,6 +87,55 @@ class Validator(process):
         Safety.log(
             "Sent Reply:", f"recipient: {MemPool.client_process_to_id[client]} command: {cmd}")
         send(('Reply', (reqid, result)), to=client)
+
+    def sync_up(last_block_id):
+        # check what the status of other nodes are.
+        # the last block it has
+        sync_up_collection[last_block_id] = []
+        send(('SyncUpRequest', (last_block_id)), to=validators)
+
+    def receive(msg=("SyncUpRequest", last_block_id), from_=sender):
+        # send data to help validator sync up
+        missing, pending_block_tree = BlockTree.get_updates(last_block_id)
+        send(("SyncUpResponse", (missing, pending_block_tree, last_block_id)), to=sender)
+
+    def receive(msg=("SyncUpResponse", (missing, pending_block_tree, last_block_id)), from_=sender):
+        sync_up_collection[last_block_id].append((missing, pending_block_tree))
+        if len(sync_up_collection[last_block_id]) == 2*Safety.f + 1:
+            block_counts = {}
+            commit_counts = {}
+            to_execute_and_insert = []
+            to_process = []
+            for mis, pbt in sync_up_collection[last_block_id]:
+                for blocknode in pbt.values():
+                    blk = blocknode.block
+                    if blk.id in block_counts:
+                        block_counts[blk.id] += 1
+                    else:
+                        block_counts[blk.id] = 1
+                    if block_counts[blk.id] == Safety.f + 1:
+                        to_execute_and_insert.append(blk)
+                for block in mis:
+                    if block.id in commit_counts:
+                        commit_counts[block.id] += 1
+                    else:
+                        commit_counts[block.id] = 1
+                    if block_counts[block.id] == Safety.f + 1:
+                        to_process.append(block)
+
+            to_execute_and_insert.sort(key=lambda x: x.round)
+
+            print(f"To exc_a_ins: {[x.id for x in to_execute_and_insert]}")
+            for block in to_execute_and_insert:
+                if block.round != 0:
+                    BlockTree.execute_and_insert(block)
+
+            # for block in missing:
+            for block in to_process:
+                if block == BlockTree.genesis_block or block == None or block.qc == None:
+                    continue
+                process_certificate_qc(block.qc)
+                BlockTree.execute_and_insert(block)
 
     # PSEUDOCODE: Procedure process_certificate_qc(qc)
 
@@ -122,6 +174,26 @@ class Validator(process):
         # check the signatures contained within the proposal using function from safety module
         if (Safety.valid_signatures(P.block.qc, P.last_round_tc) == False or Safety.valid_signatures(P.high_commit_qc, None) == False):
             return
+
+        # Just first check that we have all corresponding metadata
+        block_qc_vote_info = P.block.qc.vote_info if P.block.qc else None
+        high_commit_qc_vote_info = P.high_commit_qc.vote_info if P.high_commit_qc else None
+        ids_to_check = []
+        if block_qc_vote_info:
+            ids_to_check += [block_qc_vote_info.id,
+                             block_qc_vote_info.parent_id]
+        if high_commit_qc_vote_info:
+            ids_to_check += [high_commit_qc_vote_info.id,
+                             high_commit_qc_vote_info.parent_id]
+        for block_id in ids_to_check:
+            if block_id and block_id not in BlockTree.pending_block_tree and block_id not in Ledger.commits:
+                Safety.log("Behind here, missing: ",
+                           f"{block_id}. Will call sync up")
+                last_block_id = BlockTree.last_block.id
+                sync_up(last_block_id)
+                await(len(sync_up_collection[last_block_id]) >= 2*Safety.f + 1)
+                Safety.log("Got catch up collection: ",
+                           f"{sync_up_collection[last_block_id]}")
 
         # remove the request from your request pool so you don't propose it again
         MemPool.remove_from_requests(P.block.payload)
@@ -260,11 +332,11 @@ class Validator(process):
             P = BlockTree.ProposalMsg(b, last_tc, BlockTree.high_commit_qc)
 
             # simulate faulty leader
-            if faulty:
-                Safety.log(
-                    f"SLEEPING WHEN I SHOULD BE SENDING BLOCK FOR ROUND:", f"{PaceMaker.current_round}")
-                sleep(8)
-                faulty = False
+            # if faulty:
+            #    Safety.log(
+            #        f"SLEEPING WHEN I SHOULD BE SENDING BLOCK FOR ROUND:", f"{PaceMaker.current_round}")
+            #    sleep(8)
+            #    faulty = False
 
             # should send itself the proposal as well
             # PSEUDOCODE: broadcast ProposalMsg(b, last_tc, Block - Tree.high_commit_qc)
@@ -274,29 +346,57 @@ class Validator(process):
 
     # PSEUDOCODE: if M is a proposal message then process_proposal_msg(M)
     def receive(msg=("ProposalMsg", P), from_=sender):
+        if faulty and drop_count < to_drop:
+            Safety.log("Dropping ProposalMsg:",
+                       f"{{ sender: {Safety.validator_process_to_id[sender]}, Block: {{ {P.block} }}, last_round_tc: {{ {P.last_round_tc} }}, high_commit_qc: {{ {P.high_commit_qc} }}, signature: {P.signature} }}")
+            drop_count += 1
+            return
+
         Safety.log("Received ProposalMsg:",
                    f"{{ sender: {Safety.validator_process_to_id[sender]}, Block: {{ {P.block} }}, last_round_tc: {{ {P.last_round_tc} }}, high_commit_qc: {{ {P.high_commit_qc} }}, signature: {P.signature} }}")
         process_proposal_msg(P, sender)
 
     # PSEUDOCODE: if M is a timeout message then process_timeout_message(M)
     def receive(msg=("TimeoutMsg", M), from_=sender):
+        if faulty and drop_count < to_drop:
+            Safety.log("Dropping TimeoutMsg:",
+                       f"{{ sender: {Safety.validator_process_to_id[sender]}, tmo_info: {{ {M.tmo_info} }}, last_round_tc: {{ {M.last_round_tc} }}, high_commit_qc: {{ {M.high_commit_qc} }} }}")
+            drop_count += 1
+            return
+
         Safety.log("Received TimeoutMsg:",
                    f"{{ sender: {Safety.validator_process_to_id[sender]}, tmo_info: {{ {M.tmo_info} }}, last_round_tc: {{ {M.last_round_tc} }}, high_commit_qc: {{ {M.high_commit_qc} }} }}")
         process_timeout_msg(M)
 
     # PSEUDOCODE: if M is a vote message then process_vote_msg(M)
     def receive(msg=("VoteMsg", M), from_=sender):
+        if faulty and drop_count < to_drop:
+            Safety.log("Dropping VoteMsg:",
+                       f"{{ sender: {Safety.validator_process_to_id[sender]}, vote_info: {{ {M.vote_info} }}, ledger_commit_info: {{ {M.ledger_commit_info} }}, high_commit_qc: {{ {M.high_commit_qc} }}, signature: {M.signature} }}")
+            drop_count += 1
+            return
+
         Safety.log("Received VoteMsg:",
                    f"{{ sender: {Safety.validator_process_to_id[sender]}, vote_info: {{ {M.vote_info} }}, ledger_commit_info: {{ {M.ledger_commit_info} }}, high_commit_qc: {{ {M.high_commit_qc} }}, signature: {M.signature} }}")
         process_vote_msg(M)
 
     # PSEUDOCODE: if M is a local timeout then Pacemaker.local_timeout_round()
     def receive(msg=("LocalTimeout", M), from_=sender):
+        if faulty and drop_count < to_drop:
+            Safety.log("Dropping LocalTimeout:",
+                       f"sender: {Safety.validator_process_to_id[sender]}, message:{M}")
+            drop_count += 1
+            return
         Safety.log("Received LocalTimeout:",
                    f"sender: {Safety.validator_process_to_id[sender]}, message:{M}")
         PaceMaker.local_timeout_round()
 
     def receive(msg=('Request', req), from_=sender):
+        if faulty and drop_count < to_drop:
+            Safety.log("Dropping Request:",
+                       f"sender: {MemPool.client_process_to_id[sender]}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
+            drop_count += 1
+            return
         Safety.log("Received Request:",
                    f"sender: {MemPool.client_process_to_id[sender]}, id:{req.id}, cmd: {req.cmd}, signature: {req.signature}")
         # verify client signature
