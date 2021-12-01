@@ -1,0 +1,93 @@
+import Validator
+
+round_partitions = None  # map from round number to partitions (ex: 3:[{A,B,C},{A',D}])
+intercepted_msgs = None  # map from message type to list of intercepted messages of that type
+twin_nodes = None  # map from a node to its twin for all twin nodes
+all_nodes = None  # map from a node name to a process, including twins
+commit_info = None  # maps node name with its commit_state_id
+
+
+def setup_(nodes, twins, param_round_partitions, round_leaders, msg_type_drops, intra_message_drops):
+    global twin_nodes, round_partitions, all_nodes
+    round_partitions, twin_nodes, all_nodes = param_round_partitions, twins, nodes
+    msg_type_drops, intra_message_drops = msg_type_drops, intra_message_drops
+    for node in nodes:
+        private_key[node] = generate_private_key()
+        public_key[node] = private_key.generate_public_key()
+    for node in nodes:
+        all_nodes[node] = Validator(round_leaders, private_key[node], public_key)
+    for i in range(0, len(twins)):
+        all_nodes[twins[i]] = Validator(round_leaders, private_key[nodes[i]],
+                                        public_key)  # private key of a twin node is the same as its original counterpart
+        twin_nodes[nodes[i]] = twins[i]
+
+
+# NetworkPlayground : EventLoop
+# loop: wait for next event M ; NetworkPlayground.start_event_processing(M)
+
+def start_event_processing(M):
+    if M[0] == "ProposalMsg":
+        intercepted_msgs[ProposalMsg] = intercepted_msgs[ProposalMsg].append(M[1])
+        deliver_message(M)
+
+    if M[0] == "VoteMsg":
+        intercepted_msgs[VoteMsg] = intercepted_msgs[VoteMsg].append(M[1])
+        deliver_message(M)
+
+    if M[0] == "TimeoutMsg":
+        intercepted_msgs[TimeoutMsg] = intercepted_msgs[TimeoutMsg].append(M[1])
+        deliver_message(M)
+
+    if M == "TransactionCompletedMsg":
+        deliver_message(M)
+
+
+# This function waits until a certain number of messages of a certain type have been
+# intercepted by the playground, and then returns them. Used in executor
+def wait_for_messages(num, msgtype):
+    wait(len(intercepted_msgs[msgtype]) >= num)
+    return intercepted_msgs[msgtype]
+
+
+def deliver_message(M):
+    if M[0] == "ProposalMsg":
+        msg_sender = M.sender
+        msg_rnd = M.block.round
+        if msg_type_drop[msg_rnd] == 'P':
+            return  # drop proposal message
+        if intra_partition_drop[msg_rnd] == True:
+            return  # drop message within partition
+        for partition in round_partitions[msg_rnd]:
+            if msg_sender in partition:
+                send(M, partition)
+                return
+    if M[0] == "VoteMsg":
+        msg_sender = M.sender
+        msg_rnd = M.vote_info.round
+        msg_recipient = M.recipient  # node this vote message was intended to go to
+        if msg_type_drop[msg_rnd] == 'V':
+            return  # drop proposal message
+        if intra_partition_drop[msg_rnd] == True:
+            return  # drop message within partition
+        for partition in round_partitions[msg_rnd]:
+            if msg_sender in partition:
+                if msg_recipient in partition:
+                    send(M, msg_recipient)
+                if twin_nodes[msg_recipient] in partition:
+                    send(M, twin_nodes[msg_recipient])
+                return
+
+    # timeout messages should never be dropped in order to allow nodes to create TCs
+    # to advance rounds and progress the test case
+    if M[0] == "TimeoutMsg":
+        if intra_partition_drop[msg_rnd] == True:
+            return  # drop message within partition
+        send(M, all_nodes)
+        return
+
+    if M == "TransactionCompletedMsg":
+        commit_info[M.sender] = M.commit_state_id
+
+
+def get_commits():
+    return commit_ids
