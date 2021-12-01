@@ -18,7 +18,7 @@ _cached_results = []
 
 block_pending = False
 
-progress_pending_cmd = False
+commit_pending = False
 
 
 def get_transactions():

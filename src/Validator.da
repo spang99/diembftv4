@@ -255,12 +255,11 @@ class Validator(process):
                 # wait for requests to come in
 
                 -- wait_for_requests
-                # await((len(MemPool.pending_requests) > 1 ^ ('' not in MemPool.pending_requests)) or MemPool.progress_pending_cmd or run_done)
-                await((MemPool.block_pending or MemPool.request_pool) or run_done or MemPool.progress_pending_cmd)
+                await((MemPool.block_pending or MemPool.request_pool) or run_done or MemPool.commit_pending)
             if run_done:
                 # allow validator to exit
                 return
-            MemPool.progress_pending_cmd = False
+            MemPool.commit_pending = False
 
             # PSEUDOCODE: b <- Block-Tree.generate_block(MemPool.get_transaction(), PaceMaker.current_round)
             b = BlockTree.generate_block(

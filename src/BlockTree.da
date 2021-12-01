@@ -187,8 +187,6 @@ def pending_block_tree_prune(newroot_id):
     for node in nodes_to_keep:
         pending_block_tree[node.block.id] = node
 
-    # print(f"\t\t\t\tCURRENT PENDING_BLOCK_TREE:{pending_block_tree}")
-
 
 def process_qc(qc):
     global pending_block_tree, high_commit_qc, high_qc
@@ -206,34 +204,17 @@ def process_qc(qc):
         # PSEUDOCODE(Ledger.commit(qc.vote_info.parent_id))
         committed_request = Ledger.commit(qc.vote_info.parent_id)
 
-        # try:
-        # remove pending request from mempool
-        #payload = pending_block_tree[qc.vote_info.parent_id].block.payload
-        # MemPool.pending_requests.remove(payload)
-        # if Safety.validator_id == LeaderElection.get_leader(PaceMaker.current_round + 1) and len(MemPool.pending_requests) == 0 and payload != '':
-        # Since this may empty the pending requests pool, leader may not propose an empty block to allow other
-        # validators who don't have this qc to commit the commit_state_id. This variable ensures other validators
-        # get the qc
-        #MemPool.progress_pending_cmd = True
         if committed_request:
             # prune
             # PSEUDOCODE(pending_block_tree.prune(qc.vote_info.parent_id))
             pending_block_tree_prune(qc.vote_info.parent_id)
 
             if pending_block_tree[qc.vote_info.id].block.payload != '':
-                Safety.log(
-                    "Nonempty Cmd is pending: ", f"{pending_block_tree[qc.vote_info.id].block.payload}")
                 MemPool.block_pending = True
             else:
-                Safety.log(
-                    "Nonempty Cmd not pending: ", f"{pending_block_tree[qc.vote_info.id].block.payload}")
                 MemPool.block_pending = False
-            if committed_request != "":
-                MemPool.progress_pending_cmd = True
-
-        # except:
-            # print(f"{Safety.validator_id}: payload:{pending_block_tree[qc.vote_info.parent_id].payload},pending:{MemPool.pending_requests}. {Safety.validator_id}")
-        #    pass
+            if committed_request != "" and Safety.validator_id == LeaderElection.get_leader(PaceMaker.current_round + 1):
+                MemPool.commit_pending = True
 
         # PSEUDOCODE(high_commit_qc < - maxround{qc, high_commit_qc})
         if high_commit_qc:
