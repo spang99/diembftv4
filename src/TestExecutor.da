@@ -17,16 +17,17 @@ def is_safe(commits):
     return True
 
 
-def executeScenario(nodes, target_nodes, round_partitions, round_leaders):
+def executeScenario(nodes, target_nodes, round_partitions=None, round_leaders=None):
     # nodes = DiemRun.initialize(num_nodes + target_nodes)
     #     if round_partitions and round_leaders are null then read from file test_cases.txt
+    rnds = round_leaders
     if round_partitions is None and round_leaders is None:
-        f = open('test_cases.txt', a)
+        f = open('test_cases.txt', 'a')
         round_partitions = f.read()
         round_leaders = f.read()
 
-    msg_type_drops = []  # specifies which message should be dropped for a particular round
-    intra_partition_drops = []  # specifies whether an intra-partition message should be dropped
+    msg_type_drops = [None]*rnds  # specifies which message should be dropped for a particular round
+    intra_partition_drops = [None]*rnds  # specifies whether an intra-partition message should be dropped
 
     for i in range(1, len(round_partitions)):
         if i % 5 == 0:
@@ -36,7 +37,7 @@ def executeScenario(nodes, target_nodes, round_partitions, round_leaders):
         if i % 10 == 0:
             intra_partition_drops[i] = True
 
-    NetworkPlayground.initialize(nodes, target_nodes, round_partitions, round_leaders)
+    NetworkPlayground.initialize(nodes, target_nodes, round_partitions, round_leaders, msg_type_drops, intra_partition_drops)
     commits = []
     i = 0
     while is_safe(commits) and i < len(round_partitions):
