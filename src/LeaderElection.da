@@ -15,7 +15,7 @@ exclude_size = None
 reputation_leaders = {}
 
 # for twins mode
-rnd_leaders = None
+round_leaders = None
 twins = False
 
 
@@ -108,7 +108,7 @@ def update_leaders(qc):
 
 def get_leader(rnd):
     if twins:
-        return rnd_leaders[rnd]
+        return round_leaders[rnd]
     global validators, reputation_leaders
     # print(f"{Safety.validator_id}: In function: LeaderElection.get_leader")
     # PSEUDOCODE(if (round, leader) in reputation_leaders then)
