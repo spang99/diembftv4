@@ -33,7 +33,10 @@ class Validator(process):
         Safety.log_path = log_folder / fname
         file = open(Safety.log_path, "w")
         file.close()
-        LeaderElection.setup_LeaderElection()  # Must be called after Safety is setup
+        if 'round_leaders' not in config:
+            LeaderElection.setup_LeaderElection()  # Must be called after Safety is setup
+        else:
+            LeaderElection.setup_LeaderElectionTwins(config['round_leaders'])
         BlockTree.setup_BlockTree()  # Must be called after Safety is setup
         ledger_folder = Path("./ledgers")
         os.makedirs(ledger_folder, exist_ok=True)
