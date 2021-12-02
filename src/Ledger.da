@@ -8,7 +8,7 @@ from pathlib import Path
 
 u = None
 filename = None
-commits = {} # stores q_size committed blocks for quick retrieval
+commits = {}  # stores q_size committed blocks for quick retrieval
 q_size = 35  # no of committed blocks remembered
 commit_queue = deque()  # stores the last q_size committed blocks
 state_id = {}  # description below:
@@ -44,7 +44,8 @@ def commit(block_id):
         return
     block = BlockTree.pending_block_tree[block_id].block
     f = open(filename, 'a')
-    f.write(block.payload)
+    if block.payload != "":
+        f.write(block.payload+"\n")
     f.close()
 
     commits[block_id] = block  # storing in dictionary for quick retrieval
@@ -66,20 +67,21 @@ def commit(block_id):
 
 # PSEUDOCODE for updating other validators
 def get_update_info(block_id):
-   missing = []
-   if block_id in commits: #This means block id is in memory
-       idx = commit_queue.index(block_id)
-       missing = [commit_queue[i] for i in range(idx, len(commit_queue)-1)]
-   return missing
+    missing = []
+    if block_id in commits:  # This means block id is in memory
+        idx = commit_queue.index(commits[block_id])
+        missing = [commit_queue[i] for i in range(idx, len(commit_queue)-1)]
+    return missing
 #    else: (means block_id is in file)
 #        idx = index of block_id in file
 #        append next transaction onwards till the end of file to missing list
 #        append all transactions from commit_queue
 
+
 def update(missing):
     for block in missing:
         f = open(filename, 'a')
-        f.write(block.payload)
+        f.write(block.payload+"\n")
         f.close()
         block_id = block.id
         commits[block_id] = block  # storing in dictionary for quick retrieval

@@ -146,17 +146,19 @@ high_qc = None
 # PSEUDOCODE(pending_block_tree;)
 pending_block_tree = {}  # Use a dictionary, indexed by block id
 # Declaring as dictionary for quick search
+last_block = None
 # PSEUDOCODE(pending_votes;)
 pending_votes = defaultdict(list)
 vote_idx = None
 f = None
 
 genesis_block = None
+genesis_qc = None
 
 
 # Must be called after Safety is setup
 def setup_BlockTree():
-    global f, high_qc, genesis_block
+    global f, high_qc, genesis_block, genesis_qc, last_block
     f = Safety.f
     # Create genesis block and genesis QC (to link to genesis block for advancement from round 0)
     # genesis block is the root of the pending blocktree
@@ -164,6 +166,7 @@ def setup_BlockTree():
     genesis_block = Block(author=None, round=0, payload='',
                           qc=None, id=genesis_blockid)
 
+    last_block = genesis_block
     # should everyone start with QC(0), or only leader embed it in Block(1)?
     # try everyone starting with it
     genesis_qc_vote_info = VoteInfo(
@@ -173,6 +176,7 @@ def setup_BlockTree():
     genesis_block_node = BlockNode(genesis_block)
     pending_block_tree[genesis_blockid] = genesis_block_node
     high_qc = genesis_qc
+    Ledger.commit_queue.append(genesis_block)
 
 
 def pending_block_tree_prune(newroot_id):
@@ -200,13 +204,16 @@ def pending_block_tree_prune(newroot_id):
 
     # print(f"\t\t\t\tCURRENT PENDING_BLOCK_TREE:{pending_block_tree}")
 
+
 def get_updates(block_id):
     missing = Ledger.get_update_info(block_id)
     return missing, pending_block_tree
 
+
 def update_node(missing_commits, pending_tree):
     pending_block_tree = pending_tree
     Ledger.update(missing_commits)
+
 
 def process_qc(qc):
     global pending_block_tree, high_commit_qc, high_qc
@@ -215,7 +222,7 @@ def process_qc(qc):
     # print(f'{Safety.validator_id}: In function: process_qc.')
     committed_request = None
     # If received genesis QC and round is 0, return because genesis QC is already highqc and has no info
-    if qc.vote_info.round == 0 and PaceMaker.current_round == 1:
+    if (qc.vote_info.round == 0 and PaceMaker.current_round == 1) or qc.ledger_commit_info == None:
         return
     # PSEUDOCODE(if qc.ledger_commit_info.commit_state_id != None then)
     if qc.ledger_commit_info.commit_state_id and (qc.vote_info.parent_id not in Ledger.commits):
@@ -269,6 +276,8 @@ def execute_and_insert(b):
     # Add itself to children of parent block (simulating a tree)
     # PSEUDOCODE(pending_block_tree.add(b))
     pending_block_tree[b.qc.vote_info.id].children.append(b.id)
+    global last_block
+    last_block = b
 
 
 def verify_signature(v):
