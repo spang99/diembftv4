@@ -1,112 +1,142 @@
 import Validator
 from nacl.signing import SigningKey
 
-round_partitions = None  # map from round number to partitions (ex: 3:[{A,B,C},{A',D}])
-intercepted_msgs = None  # map from message type to list of intercepted messages of that type
-twin_nodes = None  # map from a node to its twin for all twin nodes
-all_nodes = None  # map from a node name to a process, including twins
-commit_info = {}  # maps node name with its commit_state_id
-msg_type_drops = []
-intra_partition_drops = []
+config(channel='fifo', clock='Lamport')
+
+class NetworkPlayground(process):
+    def setup(nodes, twins, param_round_partitions, round_leaders, msg_type_drps, intra_prt_drops):
+
+        self.round_partitions = None  # map from round number to partitions (ex: 3:[{A,B,C},{A',D}])
+        self.intercepted_msgs = None  # map from message type to list of intercepted messages of that type
+        self.honest_twin_map = {}  # map from a node to its twin for all twin nodes
+        self.validators = set() # set of all validator processes
+        self.node_name_proc_map = {}  # map from a node name to a process, including twins
+        self.node_proc_name_map = {} # map from a process to a node, including twins
+        self.commit_info = {}  # maps node name with its commit_state_id
+        self.end_flag = False # indicates when there are no more test cases
+        self.msg_type_drops = []
+        self.intra_partition_drops = []
+
+        self.round_partitions = param_round_partitions
+        self.msg_type_drops = msg_type_drps
+        self.intra_partition_drops = intra_prt_drops
+
+        self.private_keys = {}
+        self.public_keys = {}
+
+        for i,node in enumerate(nodes):
+            if node not in twins:
+                private_keys[node] = SigningKey.generate()
+            else:
+                # private key of a twin node is the same as its original counterpart
+                honest_twin_map[node] = twins[i]
+                private_keys[honest_twin_map[node]] = private_keys[node]
+            public_keys[node] = private_keys[node].verify_key() 
+
+        validators = new(Validator.Validator, num=nodes.size())
+        node_name_proc_map = {nodes[i]: val for i, val in enumerate(validators)}
+        node_proc_name_map = {v: k for k, v in node_name_proc_map.items()}
+
+        for node, proc in node_name_proc_map.items():
+            config = {}
+            config['validator_id'] = node
+            config['private_key'] = private_keys[node]
+            config['public_keys'] = public_keys
+            config['f'] = False
+            # has to be list so that PaceMaker can deterministically choose a leader in case of round robin
+            config['validator_ids'] = nodes # list of validator ids
+            config['round_leaders'] = round_leaders
+            config['validator_id_to_process'] = node_name_proc_map
+            config['validator_process_to_id'] = node_proc_name_map
+            # config['parent'] = self
+            # config['client_keys'] = client_public_keys
+            setup(proc, (validators - {proc}, 0, config)) 
+
+    # gives numeric code for particular message type
+
+    def get_msg_code(msg_type):
+        if msg_type == "ProposalMsg":
+            return 0
+        if msg_type == "VoteMsg":
+            return 1
+        if msg_type == "TimeoutMsg":
+            return 2
+
+    # NetworkPlayground : EventLoop
+    # loop: wait for next event M ; NetworkPlayground.start_event_processing(M)
+
+    def receive(msg=(M), from_=sender):
+        if M[0] == "ProposalMsg":
+            intercepted_msgs[get_msg_code("ProposalMsg")].append(M[1])
+            deliver_message(M)
+
+        if M[0] == "VoteMsg":
+            intercepted_msgs[get_msg_code("VoteMsg")].append(M[1])
+            deliver_message(M)
+
+        if M[0] == "TimeoutMsg":
+            intercepted_msgs[get_msg_code("TimeoutMsg")].append(M[1])
+            deliver_message(M)
+
+        if M == "TransactionCompletedMsg":
+            deliver_message(M)
 
 
-def setup_(nodes, twins, param_round_partitions, round_leaders, msg_type_drps, intra_prt_drops):
-    global twin_nodes, round_partitions, all_nodes, msg_type_drops, intra_partition_drops
-
-    round_partitions, twin_nodes, all_nodes = param_round_partitions, twins, nodes
-    msg_type_drops, intra_partition_drops = msg_type_drps, intra_prt_drops
-
-    private_keys = {}
-    public_keys = {}
-    for node in nodes:
-        private_keys[node] = SigningKey.generate()
-        public_keys[node] = private_keys[node].verify_key()
-    for node in nodes:
-        all_nodes[node] = Validator(round_leaders, private_keys[node], public_keys)
-    for i in range(0, len(twins)):
-        all_nodes[twins[i]] = Validator(round_leaders, private_keys[nodes[i]],
-                                        public_keys)  # private key of a twin node is the same as its original counterpart
-        twin_nodes[nodes[i]] = twins[i]
-
-# gives numeric code for particular message type
-
-def get_msg_code(msg_type):
-    if msg_type == "ProposalMsg":
-        return 0
-    if msg_type == "VoteMsg":
-        return 1
-    if msg_type == "TimeoutMsg":
-        return 2
-
-# NetworkPlayground : EventLoop
-# loop: wait for next event M ; NetworkPlayground.start_event_processing(M)
-
-def start_event_processing(M):
-    if M[0] == "ProposalMsg":
-        intercepted_msgs[get_msg_code("ProposalMsg")].append(M[1])
-        deliver_message(M)
-
-    if M[0] == "VoteMsg":
-        intercepted_msgs[get_msg_code("VoteMsg")].append(M[1])
-        deliver_message(M)
-
-    if M[0] == "TimeoutMsg":
-        intercepted_msgs[get_msg_code("TimeoutMsg")].append(M[1])
-        deliver_message(M)
-
-    if M == "TransactionCompletedMsg":
-        deliver_message(M)
+    # This function waits until a certain number of messages of a certain type have been
+    # intercepted by the playground, and then returns them; used in executor
+    def wait_for_messages(num, msgtype):
+        await(len(intercepted_msgs[msgtype]) >= num)
+        return intercepted_msgs[msgtype]
 
 
-# This function waits until a certain number of messages of a certain type have been
-# intercepted by the playground, and then returns them; used in executor
-def wait_for_messages(num, msgtype):
-    wait(len(intercepted_msgs[msgtype]) >= num)
-    return intercepted_msgs[msgtype]
+    def deliver_message(M):
+        global honest_twin_map
+        if M[0] == "ProposalMsg":
+            msg_sender = M.sender
+            msg_rnd = M.block.round
+            if msg_type_drops[msg_rnd] == 'P':
+                return  # drop proposal message
+            if intra_partition_drops[msg_rnd] == True:
+                return  # drop message within partition
+            for partition in round_partitions[msg_rnd]:
+                if msg_sender in partition:
+                    receivers = set(node_name_proc_map[node] for node in partition)
+                    send(M, receivers)
+                    return
+        if M[0] == "VoteMsg":
+            msg_sender = M.sender
+            msg_rnd = M.vote_info.round
+            msg_recipient = M.recipient  # node this vote message was intended to go to
+            if msg_type_drops[msg_rnd] == 'V':
+                return  # drop proposal message
+            if intra_partition_drops[msg_rnd] == True:
+                return  # drop message within partition
+            for partition in round_partitions[msg_rnd]:
+                if msg_sender in partition:
+                    if msg_recipient in partition:
+                        send(M, msg_recipient)
+                    if honest_twin_map[msg_recipient] in partition:
+                        send(M, honest_twin_map[msg_recipient])
+                    return
 
+        # timeout messages should never be dropped in order to allow nodes to create TCs
+        # to advance rounds and progress the test case
+        if M[0] == "TimeoutMsg":
+            if intra_partition_drops[msg_rnd] == True:
+                return  # drop message within partition
+            send(M, validators)
+            return
 
-def deliver_message(M):
-    if M[0] == "ProposalMsg":
-        msg_sender = M.sender
-        msg_rnd = M.block.round
-        if msg_type_drops[msg_rnd] == 'P':
-            return  # drop proposal message
-        if intra_partition_drops[msg_rnd] == True:
-            return  # drop message within partition
-        for partition in round_partitions[msg_rnd]:
-            if msg_sender in partition:
-                send(M, partition)
-                return
-    if M[0] == "VoteMsg":
-        msg_sender = M.sender
-        msg_rnd = M.vote_info.round
-        msg_recipient = M.recipient  # node this vote message was intended to go to
-        if msg_type_drops[msg_rnd] == 'V':
-            return  # drop proposal message
-        if intra_partition_drops[msg_rnd] == True:
-            return  # drop message within partition
-        for partition in round_partitions[msg_rnd]:
-            if msg_sender in partition:
-                if msg_recipient in partition:
-                    send(M, msg_recipient)
-                if twin_nodes[msg_recipient] in partition:
-                    send(M, twin_nodes[msg_recipient])
-                return
+        if M == "TransactionCompletedMsg":
+            commit_info[M.sender] = M.commit_state_id
 
-    # timeout messages should never be dropped in order to allow nodes to create TCs
-    # to advance rounds and progress the test case
-    if M[0] == "TimeoutMsg":
-        if intra_partition_drops[msg_rnd] == True:
-            return  # drop message within partition
-        send(M, all_nodes)
-        return
+    def get_commits():
+        return commit_info
 
-    if M == "TransactionCompletedMsg":
-        commit_info[M.sender] = M.commit_state_id
-
-def get_commits():
-    return commit_info
-
-def run():
-    
-    return
+    def run(self):
+        start(validators)
+        await(end_flag is True)
+        send(('RunDone',), to=validators)
+        await(each(v in validators, has=received(('Exiting',), from_=v)))
+        send(('finished_test_case',), to=self)
+        output(f"Finished twins test cases")
