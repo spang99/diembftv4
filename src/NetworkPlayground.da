@@ -89,8 +89,7 @@ class NetworkPlayground(process):
             deliver_message(M)
 
         if M[0] == "TxnCompletedMsg":
-            intercepted_msgs[get_msg_code("TxnCompletedMsg")] += 1
-            end_flag = True
+            intercepted_msgs[get_msg_code("TxnCompletedMsg")] += 1 
             deliver_message(M)
 
     # This function waits until a certain number of messages of a certain type have been
@@ -129,7 +128,9 @@ class NetworkPlayground(process):
                         send(M, msg_recipient)
                     if honest_twin_map[msg_recipient] in partition:
                         send(M, honest_twin_map[msg_recipient])
-                    return
+            if msg_rnd is len(round_leaders):
+                end_flag = True
+            return
 
         # timeout messages should never be dropped in order to allow nodes to create TCs
         # to advance rounds and progress the test case
@@ -143,13 +144,11 @@ class NetworkPlayground(process):
         if M[0] == "TransactionCompletedMsg":
             commit_info[M.sender] = M.commit_state_id
 
-    def get_commits():
-        return commit_info
-
     def run(self):
         start(validators)
         await(end_flag is True)
         send(('RunDone',), to=validators)
         await(each(v in validators, has=received(('Exiting',), from_=v)))
+        send(('RunDone',commit_info), to=te)
         # send(('finished_test_case',), to=self)
         output(f"Finished twins test cases")
