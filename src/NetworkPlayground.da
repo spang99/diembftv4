@@ -4,22 +4,20 @@ from nacl.signing import SigningKey
 config(channel='fifo', clock='Lamport')
 
 class NetworkPlayground(process):
-    def setup(nodes, twins, param_round_partitions, round_leaders, msg_type_drps, intra_prt_drops):
+    def setup(nodes, te, twins, param_round_partitions, round_leaders, msg_type_drps, intra_prt_drops):
 
-        self.round_partitions = None  # map from round number to partitions (ex: 3:[{A,B,C},{A',D}])
-        self.intercepted_msgs = None  # map from message type to list of intercepted messages of that type
+        self.round_partitions = param_round_partitions  # map from round number to partitions (ex: 3:[{A,B,C},{A',D}])
+        self.intercepted_msgs = [0]*4  # map from message type to list of intercepted messages of that type
         self.honest_twin_map = {}  # map from a node to its twin for all twin nodes
         self.validators = set() # set of all validator processes
         self.node_name_proc_map = {}  # map from a node name to a process, including twins
         self.node_proc_name_map = {} # map from a process to a node, including twins
         self.commit_info = {}  # maps node name with its commit_state_id
         self.end_flag = False # indicates when there are no more test cases
-        self.msg_type_drops = []
-        self.intra_partition_drops = []
-
-        self.round_partitions = param_round_partitions
         self.msg_type_drops = msg_type_drps
         self.intra_partition_drops = intra_prt_drops
+        self.twin_nodes = twins
+        self.te = te
 
         self.private_keys = {}
         self.public_keys = {}
@@ -61,29 +59,43 @@ class NetworkPlayground(process):
             return 1
         if msg_type == "TimeoutMsg":
             return 2
+        if msg_type == "TxnCompletedMsg":
+            return 3
 
     # NetworkPlayground : EventLoop
     # loop: wait for next event M ; NetworkPlayground.start_event_processing(M)
 
     def receive(msg=(M), from_=sender):
         if M[0] == "ProposalMsg":
-            intercepted_msgs[get_msg_code("ProposalMsg")].append(M[1])
+            if node_proc_name_map[sender] not in twin_nodes:
+                # intercepted_msgs[get_msg_code("ProposalMsg")].append(M[1])
+                # reset intercepted messages list to symbolise beginning of next round
+                intercepted_msgs = [0]*4
+                intercepted_msgs[get_msg_code("ProposalMsg")] += 1
             deliver_message(M)
 
         if M[0] == "VoteMsg":
-            intercepted_msgs[get_msg_code("VoteMsg")].append(M[1])
+            # intercepted_msgs[get_msg_code("VoteMsg")].append(M[1])
+            intercepted_msgs[get_msg_code("VoteMsg")] += 1
+            if intercepted_msgs[get_msg_code("VoteMsg")] == 2*len(twin_nodes):
+                send("VoteMsg", te)
             deliver_message(M)
 
         if M[0] == "TimeoutMsg":
-            intercepted_msgs[get_msg_code("TimeoutMsg")].append(M[1])
+            # intercepted_msgs[get_msg_code("TimeoutMsg")].append(M[1])
+            intercepted_msgs[get_msg_code("TimeoutMsg")] += 1
+            if intercepted_msgs[get_msg_code("TimeoutMsg")] == 2*len(twin_nodes):
+                send("TimeoutMsg", te)
             deliver_message(M)
 
-        if M == "TransactionCompletedMsg":
+        if M[0] == "TxnCompletedMsg":
+            intercepted_msgs[get_msg_code("TxnCompletedMsg")] += 1
+            end_flag = True
             deliver_message(M)
-
 
     # This function waits until a certain number of messages of a certain type have been
     # intercepted by the playground, and then returns them; used in executor
+
     def wait_for_messages(num, msgtype):
         await(len(intercepted_msgs[msgtype]) >= num)
         return intercepted_msgs[msgtype]
@@ -121,13 +133,14 @@ class NetworkPlayground(process):
 
         # timeout messages should never be dropped in order to allow nodes to create TCs
         # to advance rounds and progress the test case
+
         if M[0] == "TimeoutMsg":
             if intra_partition_drops[msg_rnd] == True:
                 return  # drop message within partition
             send(M, validators)
             return
 
-        if M == "TransactionCompletedMsg":
+        if M[0] == "TransactionCompletedMsg":
             commit_info[M.sender] = M.commit_state_id
 
     def get_commits():
@@ -138,5 +151,5 @@ class NetworkPlayground(process):
         await(end_flag is True)
         send(('RunDone',), to=validators)
         await(each(v in validators, has=received(('Exiting',), from_=v)))
-        send(('finished_test_case',), to=self)
+        # send(('finished_test_case',), to=self)
         output(f"Finished twins test cases")
