@@ -1,71 +1,56 @@
-from collections import defaultdict
 import NetworkPlayground
+from pathlib import Path
+
+config(channel='fifo', clock='Lamport')
+
 
 class TestExecutor(process):
-    def get_twin(leader, nodes, twin_nodes):
-        idx = nodes.index(leader)
-        if idx >= len(twin_nodes):
-            return None
-        return twin_nodes[idx]
+    def setup(config):
+        self.finished = False
 
-    def is_safe(commits):
-        for i in range(0, len(commits) - 1):
-            if commits[i] != commits[i + 1]:
-                return False
-        check_commits = defaultdict(lambda: 0)
-        for k,v in commits.items():
-            check_commits[v] += 1
-        for k,v in commits.items():
-            if v is 2*len(twins)+1:
-                return True
-        return False
+    def receive(msg=("GotMessages", msg_list), from_=np):
+        output("Received the messages from the NetworkPlayground")
+        finished = True
 
-    def setup(nodes, target_nodes, round_partitions=None, round_leaders=None):
-        # nodes = DiemRun.initialize(num_nodes + target_nodes)
-        #     if round_partitions and round_leaders are null then read from file test_cases.txt
-        if round_partitions is None and round_leaders is None:
-            f = open('test_cases.txt', 'a')
-            round_partitions = f.read()
-            round_leaders = f.read()
-            f.close()
+    def run():
+        config = {
+            'test_case_name': "test_playground",
+            'validators': ['A', 'B', 'C', 'D'],
+            'f': 1,
+            'parent': self
+        }
 
-        rnds = len(round_leaders)
+        network_playground = new(NetworkPlayground.NetworkPlayground)
+        setup(network_playground, (config,))
+        start(network_playground)
 
-        msg_type_drops = [None]*rnds  # specifies which message should be dropped for a particular round
-        intra_partition_drops = [None]*rnds  # specifies whether an intra-partition message should be dropped
+        num_validators = 4
+        num_rounds = 10
+        num, msg_type = num_rounds*num_validators, "VoteMsg"
+        # check for right number of messages sent to deduce elapsed rounds
+        output(
+            "Letting NetworkPlayground know I am waiting for {num} {msg_type}(s).")
+        send(("WaitForMessages", (num, msg_type)), to=network_playground)
+        if await(finished):
+            pass
+        elif timeout(4):
+            output(
+                "TestExecutor timed out waiting for NetworkPlayground.WaitForMessages")
+        # Tell network playground to wrap it up
+        send(("TerminateValidators",), to=network_playground)
+        # then send RunDone to validators (or tell NP to do it?)
 
-        for i in range(1, len(round_partitions)):
-            if i % 5 == 0:
-                msg_type_drops[i] = 'V'
-            if i % 7 == 0:
-                msg_type_drops[i] = 'P'
-            if i % 10 == 0:
-                intra_partition_drops[i] = True
-
-        np = new(NetworkPlayground.NetworkPlayground, num=1)
-        setup(np, self, nodes, target_nodes, round_partitions, round_leaders, msg_type_drops, intra_partition_drops)
-        self.run_done = False
-
-        return
-
-    def receive(msg=("Rundone", C), from_=sender):
-        if is_safe(C):
-            output("Tests Successfully Executed")
-        run_done = True
-        return
-
-    def run(self):
-        start(np)
-        await(run_done == True)
-            # NetworkPlayground.get_proposal_message(num_msg, "ProposalMsg")
-            # # implement synchronously in the NetworkPlayground module
-            # NetworkPlayground.collect_votes()  # implement synchronously in the NetworkPlayground module
-            # commits = NetworkPlayground.get_commits()  # return a dictionary of nodeID vs commit_id
-            # i += 1
+        await(each(r in {network_playground}, has=received(('finished_test_case',), from_=r)))
+        send(('finished_cases',), to=nodeof(self))
+        output(f"Finished all test cases.")
 
 
-            # NetworkPlayground.wait_for_messages(num_msg, "ProposalMsg")
-            # NetworkPlayground.wait_for_messages(2 * len(target_nodes) + 1,
-            #                                     'VoteMsg') or NetworkPlayground.wait_for_messages(2 * len(target_nodes) + 1,
-            #                                                                                       'TimeoutMsg')
-        return
+def main():
+    executor = new(TestExecutor)
+    config = dict()
+    setup(executor, (config,))
+    start(executor)
+    output("Here waiting")
+    await(each(e in {executor}, has=received(('finished_cases',), from_=e)))
+    output("Done waiting")
+    output("Finished all test cases.")

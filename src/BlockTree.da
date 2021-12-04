@@ -16,7 +16,6 @@ class Block:
         self.payload = payload
         self.qc = qc
         self.id = id
-        # print(f'{Safety.validator_id}: Created new Block class')
 
     def __str__(self):
         return f"Author: {self.author}, Round: {self.round}, Payload: {self.payload}, ID: {self.id}, QC: {{ {self.qc} }}"
@@ -26,7 +25,9 @@ class LedgerCommitInfo:
     def __init__(self, commit_state_id, vote_info_hash):
         self.commit_state_id = commit_state_id
         self.vote_info_hash = vote_info_hash
-        # print(f'{Safety.validator_id}: Created new LedgerCommitInfo class.')
+
+    def __str__(self):
+        return f"commit_state_id: {self.commit_state_id}"
 
 
 class ProposalMsg:
@@ -36,7 +37,6 @@ class ProposalMsg:
         self.high_commit_qc = high_commit_qc
         # signing_key expected in Safety module
         self.signature = Safety.get_private_key().sign(block.id.encode())
-        # print(f'{Safety.validator_id}: Created new ProposalMsg class')
 
     def __str__(self):
         return f"Block: {{ {self.block} }}, last_round_tc: {{ {self.last_round_tc} }}, high_commit_qc: {{ {self.high_commit_qc} }}"
@@ -56,7 +56,6 @@ class QC:
                 b''.join([signature for (signer, signature) in signatures]))
         else:
             self.author_signature = None
-        # print(f'{Safety.validator_id}: Created new QC class')
 
     def signers(self):
         try:
@@ -64,7 +63,6 @@ class QC:
                 validator_id, _) in self.signatures]
             return qc_signers
         except:
-            #print(f"Error getting qc signers. {Safety.validator_id}")
             return None
 
     def __str__(self):
@@ -76,7 +74,6 @@ class TimeoutMsg:
         self.tmo_info = tmo_info
         self.last_round_tc = last_round_tc
         self.high_commit_qc = high_commit_qc
-        # print(f'{Safety.validator_id}: Created new TimeoutMsg class')
 
 
 class TC:
@@ -84,7 +81,6 @@ class TC:
         self.round = round
         self.tmo_high_qc_rounds = tmo_high_qc_rounds
         self.tmo_signatures = tmo_signatures
-        # print(f'{Safety.validator_id}: Created new TC class')
 
     def __str__(self):
         return f"round: {self.round}, tmo_high_qc_rounds: {self.tmo_high_qc_rounds}"
@@ -97,7 +93,6 @@ class TimeoutInfo:
         self.sender = sender
         # signing_key expected in Safety module
         self.signature = Safety.get_private_key().sign((round, high_qc.vote_info.round))
-        # print(f'{Safety.validator_id}: Created new TimeoutInfo class')
 
     def __str__(self):
         return f"sender: {self.sender}, round: {self.round}, high_qc: {{ {self.high_qc} }}, signature: {self.signature}"
@@ -110,7 +105,6 @@ class VoteInfo:
         self.parent_id = parent_id
         self.parent_round = parent_round
         self.exec_state_id = exec_state_id
-        # print(f'{Safety.validator_id}: Created new VoteInfo class')
 
     def __str__(self):
         return f"id: {self.id}, round: {self.round}, parent_id: {self.parent_id}, parent_round: {self.parent_round}, exec_state_id: {self.exec_state_id}"
@@ -129,7 +123,9 @@ class VoteMsg:
         else:
             self.signature = Safety.get_private_key().sign(
                 ledger_commit_info.vote_info_hash.encode())
-        # print(f'{Safety.validator_id}: Created new VoteMsg class')
+
+    def __str__(self):
+        return f"vote_info: {self.vote_info}, ledger_commit_info: {self.ledger_commit_info}, high_commit_qc: {self.high_commit_qc}"
 
 
 class BlockNode:
@@ -181,7 +177,6 @@ def setup_BlockTree():
 
 def pending_block_tree_prune(newroot_id):
     global pending_block_tree
-    # print(f"\t\t\t\tPREV PENDING_BLOCK_TREE:{pending_block_tree}")
     nodes_to_keep = []
     children = pending_block_tree[newroot_id].children
     while len(children) > 0:
@@ -194,15 +189,10 @@ def pending_block_tree_prune(newroot_id):
     # remove them from pending list as well
     keep_ids = [x.block.id for x in nodes_to_keep]
     cmds_to_prune = [
-        x.block.payload for x in pending_block_tree if x not in keep_ids]
-    for cmd in cmds_to_prune:
-        MemPool.remove_from_requests(cmd)
-        MemPool.pending_requests.remove(cmd)
+        pending_block_tree[x].block.payload for x in pending_block_tree if x not in keep_ids]
     pending_block_tree.clear()
     for node in nodes_to_keep:
         pending_block_tree[node.block.id] = node
-
-    # print(f"\t\t\t\tCURRENT PENDING_BLOCK_TREE:{pending_block_tree}")
 
 
 def get_updates(block_id):
@@ -219,7 +209,7 @@ def process_qc(qc):
     global pending_block_tree, high_commit_qc, high_qc
     if (qc is not None) and (qc.author_signature is not None) and (not Safety.valid_signature(Safety.get_public_key(str(qc.author)), qc.author_signature)):
         output('Not correct signature, QC will not be processed')
-    # print(f'{Safety.validator_id}: In function: process_qc.')
+
     committed_request = None
     # If received genesis QC and round is 0, return because genesis QC is already highqc and has no info
     if (qc.vote_info.round == 0 and PaceMaker.current_round == 1) or qc.ledger_commit_info == None:
@@ -227,30 +217,12 @@ def process_qc(qc):
     # PSEUDOCODE(if qc.ledger_commit_info.commit_state_id != None then)
     if qc.ledger_commit_info.commit_state_id and (qc.vote_info.parent_id not in Ledger.commits):
         # included additional check to prevent committing an already committed block
-        # print(f"{Safety.validator_id}: Committing block cmd,round: {pending_block_tree[qc.vote_info.parent_id].block.payload, qc.vote_info.parent_round}")
 
         # PSEUDOCODE(Ledger.commit(qc.vote_info.parent_id))
         committed_request = Ledger.commit(qc.vote_info.parent_id)
-        try:
-            # remove pending request from mempool
-            payload = pending_block_tree[qc.vote_info.parent_id].block.payload
-            MemPool.pending_requests.remove(
-                payload)
-            if Safety.validator_id == LeaderElection.get_leader(PaceMaker.current_round + 1) and len(
-                    MemPool.pending_requests) == 0 and payload != '':
-                # Since this may empty the pending requests pool, leader may not propose an empty block to allow other
-                # validators who don't have this qc to commit the commit_state_id. This variable ensures other validators
-                # get the qc
-                MemPool.progress_pending_cmd = True
-            if committed_request:
-                # pass
-                # prune
-                # PSEUDOCODE(pending_block_tree.prune(qc.vote_info.parent_id))
-                pending_block_tree_prune(qc.vote_info.parent_id)
-        except:
-            # print(f"{Safety.validator_id}: payload:{pending_block_tree[qc.vote_info.parent_id].payload},pending:{MemPool.pending_requests}. {Safety.validator_id}")
-            pass
-
+        if committed_request:
+            # PSEUDOCODE(pending_block_tree.prune(qc.vote_info.parent_id))
+            pending_block_tree_prune(qc.vote_info.parent_id)
         # PSEUDOCODE(high_commit_qc < - maxround{qc, high_commit_qc})
         if high_commit_qc:
             if qc.vote_info.round > high_commit_qc.vote_info.round:
@@ -268,7 +240,6 @@ def process_qc(qc):
 
 def execute_and_insert(b):
     global pending_block_tree
-    # print(f'{Safety.validator_id}: In function: execute_and_insert.')
     # PSEUDOCODE(Ledger.speculate(b.qc.block_id, b.id, b.payload))
     Ledger.speculate(b.qc.vote_info.id, b.id, b.payload)
     block_node = BlockNode(b)
@@ -281,7 +252,6 @@ def execute_and_insert(b):
 
 
 def verify_signature(v):
-    ##print(f"{Safety.validator_id}: Inside BlockTree.verify_signature")
     verify_key = Safety.get_public_key(v.sender)
     if verify_key is None:
         return False
@@ -295,7 +265,6 @@ def verify_signature(v):
 
 def process_vote(v):  # v is of type VoteMsg
     global pending_votes, f
-    # print(f'{Safety.validator_id}: In function: process_vote')
     if v.high_commit_qc is not None:
         # PSEUDOCODE(process_qc(v.high_commit_qc))
         process_qc(v.high_commit_qc)
@@ -320,7 +289,6 @@ def process_vote(v):  # v is of type VoteMsg
             Safety.log("Making QC,", "")
             qc = QC(v.vote_info, v.ledger_commit_info, pending_votes[vote_idx],
                     Safety.validator_id)
-            # print(f'{Safety.validator_id}: Created quorum certificate')
             # PSEUDOCODE(return qc)
             return qc
     # PSEUDOCODE(return None)
@@ -329,7 +297,6 @@ def process_vote(v):  # v is of type VoteMsg
 
 def generate_block(txns, current_round):
     global high_commit_qc, high_qc
-    # print(f'{Safety.validator_id}: In function: generate_block')
     # PSEUDOCODE(return Block(
     #     author <- u
     #     round <- current_round

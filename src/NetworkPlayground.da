@@ -1,154 +1,115 @@
-import Validator
+import ValidatorTwins
 from nacl.signing import SigningKey
+from pathlib import Path
+import os
+import datetime
+
 
 config(channel='fifo', clock='Lamport')
 
+
 class NetworkPlayground(process):
-    def setup(nodes, te, twins, param_round_partitions, round_leaders, msg_type_drps, intra_prt_drops):
+    def setup(config):
+        self.test_case_name = config['test_case_name']
+        self.validator_ids = config['validators']
+        self.validator_set = set()
+        self.validator_id_to_process = dict()
+        self.f = config['f']
+        self.finished = False
+        self.parent = config['parent']
+        self.intercepted_messages = {
+            "ProposalMsg": [], "TimeoutMsg": [], "VoteMsg": [], "LocalTimeout": []}
+        log_folder = Path("./log")
+        os.makedirs(log_folder, exist_ok=True)
+        fname = self.test_case_name + '_' + 'NetworkPlayground.log'
+        self.log_path = log_folder / fname
+        file = open(self.log_path, "w")
+        file.close()
 
-        self.round_partitions = param_round_partitions  # map from round number to partitions (ex: 3:[{A,B,C},{A',D}])
-        self.intercepted_msgs = [0]*4  # map from message type to list of intercepted messages of that type
-        self.honest_twin_map = {}  # map from a node to its twin for all twin nodes
-        self.validators = set() # set of all validator processes
-        self.node_name_proc_map = {}  # map from a node name to a process, including twins
-        self.node_proc_name_map = {} # map from a process to a node, including twins
-        self.commit_info = {}  # maps node name with its commit_state_id
-        self.end_flag = False # indicates when there are no more test cases
-        self.msg_type_drops = msg_type_drps
-        self.intra_partition_drops = intra_prt_drops
-        self.twin_nodes = twins
-        self.te = te
+    def log(content):
+        file = open(log_path, "a")
+        log_str = datetime.datetime.now().strftime("%H:%M:%S") + " " + \
+            str(content) + '\n'
+        file.write(log_str)
+        file.close()
 
-        self.private_keys = {}
-        self.public_keys = {}
+    def receive(msg=("WaitForMessages", (num, msg_type)), from_=test_executor):
+        output(
+            f"Waiting for {num} {msg_type}(s). Currently have {len(intercepted_messages[msg_type])}")
+        await(len(intercepted_messages[msg_type]) > num or finished)
+        if not finished:
+            output("Got that many messages")
+            send(
+                ("GotMessages", intercepted_messages[msg_type]), to=test_executor)
 
-        for i,node in enumerate(nodes):
-            if node not in twins:
-                private_keys[node] = SigningKey.generate()
-            else:
-                # private key of a twin node is the same as its original counterpart
-                honest_twin_map[node] = twins[i]
-                private_keys[honest_twin_map[node]] = private_keys[node]
-            public_keys[node] = private_keys[node].verify_key() 
+    def receive(msg=("TerminateValidators",), from_=test_executor):
+        output("Got TerminateValidators from executor.")
+        self.finished = True
 
-        validators = new(Validator.Validator, num=nodes.size())
-        node_name_proc_map = {nodes[i]: val for i, val in enumerate(validators)}
-        node_proc_name_map = {v: k for k, v in node_name_proc_map.items()}
-
-        for node, proc in node_name_proc_map.items():
-            config = {}
-            config['validator_id'] = node
-            config['private_key'] = private_keys[node]
-            config['public_keys'] = public_keys
-            config['f'] = False
-            # has to be list so that PaceMaker can deterministically choose a leader in case of round robin
-            config['validator_ids'] = nodes # list of validator ids
-            config['round_leaders'] = round_leaders
-            config['validator_id_to_process'] = node_name_proc_map
-            config['validator_process_to_id'] = node_proc_name_map
-            # config['parent'] = self
-            # config['client_keys'] = client_public_keys
-            setup(proc, (validators - {proc}, 0, config)) 
-
-    # gives numeric code for particular message type
-
-    def get_msg_code(msg_type):
-        if msg_type == "ProposalMsg":
-            return 0
-        if msg_type == "VoteMsg":
-            return 1
-        if msg_type == "TimeoutMsg":
-            return 2
-        if msg_type == "TxnCompletedMsg":
-            return 3
-
-    # NetworkPlayground : EventLoop
-    # loop: wait for next event M ; NetworkPlayground.start_event_processing(M)
-
-    def receive(msg=(M), from_=sender):
-        if M[0] == "ProposalMsg":
-            if node_proc_name_map[sender] not in twin_nodes:
-                # intercepted_msgs[get_msg_code("ProposalMsg")].append(M[1])
-                # reset intercepted messages list to symbolise beginning of next round
-                intercepted_msgs = [0]*4
-                intercepted_msgs[get_msg_code("ProposalMsg")] += 1
-            deliver_message(M)
-
-        if M[0] == "VoteMsg":
-            # intercepted_msgs[get_msg_code("VoteMsg")].append(M[1])
-            intercepted_msgs[get_msg_code("VoteMsg")] += 1
-            if intercepted_msgs[get_msg_code("VoteMsg")] == 2*len(twin_nodes):
-                send("VoteMsg", te)
-            deliver_message(M)
-
-        if M[0] == "TimeoutMsg":
-            # intercepted_msgs[get_msg_code("TimeoutMsg")].append(M[1])
-            intercepted_msgs[get_msg_code("TimeoutMsg")] += 1
-            if intercepted_msgs[get_msg_code("TimeoutMsg")] == 2*len(twin_nodes):
-                send("TimeoutMsg", te)
-            deliver_message(M)
-
-        if M[0] == "TxnCompletedMsg":
-            intercepted_msgs[get_msg_code("TxnCompletedMsg")] += 1 
-            deliver_message(M)
-
-    # This function waits until a certain number of messages of a certain type have been
-    # intercepted by the playground, and then returns them; used in executor
-
-    def wait_for_messages(num, msgtype):
-        await(len(intercepted_msgs[msgtype]) >= num)
-        return intercepted_msgs[msgtype]
-
-
-    def deliver_message(M):
-        global honest_twin_map
-        if M[0] == "ProposalMsg":
-            msg_sender = M.sender
-            msg_rnd = M.block.round
-            if msg_type_drops[msg_rnd] == 'P':
-                return  # drop proposal message
-            if intra_partition_drops[msg_rnd] == True:
-                return  # drop message within partition
-            for partition in round_partitions[msg_rnd]:
-                if msg_sender in partition:
-                    receivers = set(node_name_proc_map[node] for node in partition)
-                    send(M, receivers)
-                    return
-        if M[0] == "VoteMsg":
-            msg_sender = M.sender
-            msg_rnd = M.vote_info.round
-            msg_recipient = M.recipient  # node this vote message was intended to go to
-            if msg_type_drops[msg_rnd] == 'V':
-                return  # drop proposal message
-            if intra_partition_drops[msg_rnd] == True:
-                return  # drop message within partition
-            for partition in round_partitions[msg_rnd]:
-                if msg_sender in partition:
-                    if msg_recipient in partition:
-                        send(M, msg_recipient)
-                    if honest_twin_map[msg_recipient] in partition:
-                        send(M, honest_twin_map[msg_recipient])
-            if msg_rnd is len(round_leaders):
-                end_flag = True
+    def receive(msg=("ProposalMsg", P, sender_id), from_=sender):
+        if finished:
             return
+        intercepted_messages["ProposalMsg"].append((P, sender_id))
+        log(f"Intercepted ProposalMsg from {sender_id}: {P}")
+        send(("ProposalMsg", P, sender_id), to=validator_set)
 
-        # timeout messages should never be dropped in order to allow nodes to create TCs
-        # to advance rounds and progress the test case
-
-        if M[0] == "TimeoutMsg":
-            if intra_partition_drops[msg_rnd] == True:
-                return  # drop message within partition
-            send(M, validators)
+    def receive(msg=("TimeoutMsg", M, sender_id), from_=sender):
+        if finished:
             return
+        intercepted_messages["TimeoutMsg"].append((M, sender_id))
+        log(f"Intercepted TimeoutMsg from {sender_id}: {M}")
+        send(("TimeoutMsg", M, sender_id), to=validator_set)
 
-        if M[0] == "TransactionCompletedMsg":
-            commit_info[M.sender] = M.commit_state_id
+    def receive(msg=("VoteMsg", M, sender_id, next_rnd_leader), from_=sender):
+        if finished:
+            return
+        intercepted_messages["VoteMsg"].append((M, sender_id, next_rnd_leader))
+        log(f"Intercepted VotetMsg from {sender_id} to {next_rnd_leader}: {M}")
+        send(("VoteMsg", M, sender_id),
+             to=validator_id_to_process[next_rnd_leader])
 
     def run(self):
+        output(f"Running test case: {test_case_name}")
+        validators = new(ValidatorTwins.Validator, num=len(validator_ids))
+        validator_set = validators
+        validator_ids = ["Validator_"+val_id for val_id in validator_ids]
+
+        for i, val in enumerate(validators):
+            validator_id_to_process[validator_ids[i]] = val
+
+        validator_process_to_id = {v: k for k,
+                                   v in validator_id_to_process.items()}
+
+        validator_private_keys = {
+            validator_id: SigningKey.generate() for validator_id in validator_ids}
+        validator_public_keys = {
+            validator_id: validator_private_keys[validator_id].verify_key for validator_id in validator_ids}
+
+        for i, val in enumerate(validators):
+            config = {}
+            config['test_case_name'] = self.test_case_name
+            config['validator_id'] = validator_ids[i]
+            config['private_key'] = validator_private_keys[validator_ids[i]]
+            config['public_keys'] = validator_public_keys
+            config['f'] = f
+
+            config['validator_ids'] = validator_ids
+            # shouldn' need the following
+            #config['validator_id_to_process'] = validator_id_to_process
+            #config['validator_process_to_id'] = validator_process_to_id
+            config['parent'] = self
+            config['NP'] = self
+            setup(val, (validators - {val}, 0, config))
+
         start(validators)
-        await(end_flag is True)
-        send(('RunDone',), to=validators)
+
+        # this should be done by the executor -> never mind let's try it here
+        #send(('RunDone',), to=validators)
+        if await(finished):
+            send(('RunDone',), to=validators)
+        elif timeout(5):
+            output("Timed out waiting for executor to tell me to wrap it up.")
+
         await(each(v in validators, has=received(('Exiting',), from_=v)))
-        send(('RunDone',commit_info), to=te)
-        # send(('finished_test_case',), to=self)
-        output(f"Finished twins test cases")
+        send(('finished_test_case',), to=parent)
+        output(f"Finished test case: {test_case_name}")

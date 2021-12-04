@@ -1,7 +1,7 @@
 import BlockTree
 import Safety
 import Validator
-import MemPool
+# import MemPool -> Not needed in Twins (no clients)
 import time
 from collections import defaultdict
 
@@ -94,20 +94,12 @@ def stop_timer(r):
 
 
 def advance_round_tc(tc):
-    # print(f"{Safety.validator_id}: In function: PaceMaker.advance_round_tc. {Safety.validator_id}")
     global current_round, last_round_tc
     # PSEUDOCODE(if tc = None or tc.round < current_round then)
     if tc is None or tc.round < current_round:
         # PSEUDOCODE(return false)
         return False
 
-    for blocknode in BlockTree.pending_block_tree.values():
-        if blocknode.block.round == current_round-2:
-            try:
-                MemPool.pending_requests.remove(blocknode.block.payload)
-            except:
-                # catch if cmd not in pending_requests
-                pass
     # #PSUEDOCODE(last_round_tc <- tc)
     last_round_tc = tc
     # PSEUDOCODE(start_timer(tc.round + 1))
@@ -117,13 +109,11 @@ def advance_round_tc(tc):
 
 
 def save_consensus_state():
-    # print(f"{Safety.validator_id}: In function: PaceMaker.save_consensus_state")
     pass
 
 
 def advance_round_qc(qc):
     global current_round, last_round_tc
-    # print(f"{Safety.validator_id}: In function: PaceMaker.advance_round_qc")
     #  if qc.vote_info.round < current_round then
     if qc.vote_info.round < current_round:
         # return false
