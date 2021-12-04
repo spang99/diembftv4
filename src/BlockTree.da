@@ -177,7 +177,7 @@ def setup_BlockTree():
 
 def pending_block_tree_prune(newroot_id):
     global pending_block_tree
-    nodes_to_keep = []
+    nodes_to_keep = [pending_block_tree[newroot_id]]
     children = pending_block_tree[newroot_id].children
     while len(children) > 0:
         curr = children.pop(0)

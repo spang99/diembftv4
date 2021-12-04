@@ -1,3 +1,4 @@
+from Ledger import committed_block
 import ValidatorTwins
 import NetworkPlayground
 from nacl.signing import SigningKey
@@ -9,19 +10,50 @@ config(channel='fifo', clock='Lamport')
 class TestExecutor(process):
     def setup(config):
         self.finished = False
+        self.committed_blocks_lists = dict()
 
     def receive(msg=("GotMessages", msg_list), from_=np):
         output("Received the messages from the NetworkPlayground")
         finished = True
 
+    def receive(msg=("CommittedBlock", (block_round, block_id), sender_id), from_=sender):
+        if sender_id in committed_blocks_lists:
+            committed_blocks_lists[sender_id].append((block_round, block_id))
+        else:
+            committed_blocks_lists[sender_id] = [(block_round, block_id)]
+
+    def is_safe():
+        # validators commit chain should agree at all heights
+        # get min height of a validator
+        min_height = min([len(commit_list)
+                         for commit_list in committed_blocks_lists.values()])
+        #max_height = max([len(commit_list) for commit_list in committed_blocks_lists.values()])
+        for i in range(min_height):
+            current_height_blocks = set()
+            for commit_list in committed_blocks_lists.values():
+                current_height_blocks.add(commit_list[i][1])
+            if len(current_height_blocks) > 1:
+                return False
+        return True
+
     def run():
-        test_case_name = "test_new_setup"
+        test_case_name = "test_partitions_setup"
         output(f"Running test case: {test_case_name}")
 
         # The executor is expected to read in the parameters of the scenario to execute
         scenario_validator_ids = ['A', 'B', 'C', 'D']
         num_rounds = 10
         f = 1
+        partitions = [
+            [{'A', 'D', 'B', 'C'}],  # round 1
+            [{'D', 'A', 'B'}, {'C'}],  # round 2
+            [{'A', 'D', 'B'}, {'C'}],  # round 3
+            [{'A', 'D', 'B'}, {'C'}],  # round 4
+            [{'A', 'B', 'D'}, {'C'}],  # round 5
+            [{'A', 'B', 'D'}, {'C'}],  # round 6
+            [{'A', 'B', 'D'}, {'C'}]  # round 7
+        ]
+        round_leaders = ['A', 'A', 'B', 'D', 'A', 'B', 'D']
 
         # create playground for message interceptions
         network_playground = new(NetworkPlayground.NetworkPlayground)
@@ -55,7 +87,8 @@ class TestExecutor(process):
             "test_case_name": test_case_name,
             "validators": validators,
             "validator_id_to_process": validator_id_to_process,
-            "executor": self
+            "executor": self,
+            "partitions": partitions
         }
         setup(network_playground, (config_np,))
         start(network_playground)
@@ -63,22 +96,24 @@ class TestExecutor(process):
 
         num, msg_type = num_rounds*len(validators), "VoteMsg"
         # check for right number of messages sent to deduce elapsed rounds
-        output(
-            f"Letting NetworkPlayground know I am waiting for {num} {msg_type}(s).")
         send(("WaitForMessages", (num, msg_type)), to=network_playground)
         if await(finished):
             pass
-        elif timeout(4):
+        elif timeout(20):
             output(
                 "TestExecutor timed out waiting for NetworkPlayground.WaitForMessages")
 
-        # finishe scenario
+        # finished scenario
         send(('RunDone',), to=validators)
         send(('RunDone',), to=network_playground)
 
         await(each(r in {network_playground}, has=received(('finished_test_case',), from_=r)))
         send(('finished_cases',), to=nodeof(self))
-        output(f"Finished scenario.")
+        output(f"Finished scenario. Checking for safeness...")
+        if is_safe():
+            output("Everything is Safe and Sound")
+        else:
+            output("Everything is not safe and sound.")
 
 
 def main():

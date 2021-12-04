@@ -47,7 +47,6 @@ class Validator(process):
         self.run_done = False
         self.round_start = False
         self.round_stop = False
-        #self.faulty = config['faulty']
         self.drop_count = 0
         self.to_drop = 28
         self.sync_up_collection = {}
@@ -74,18 +73,6 @@ class Validator(process):
             return False
         return True
 
-    # not needed in Twins
-    # def send_reply(cmd):
-    #     result = "Your cmd: " + cmd + " was committed by " + Safety.validator_id
-    #     client_str = cmd.split('-')[0]
-    #     reqid = int(cmd.split('-')[1])
-    #     client = MemPool.client_id_to_process[client_str]
-    #     MemPool.cache_reply(cmd, result)
-    #     # output(f"Sending reply to {client} for {cmd}")
-    #     Safety.log(
-    #         "Sent Reply:", f"recipient: {MemPool.client_process_to_id[client]} command: {cmd}")
-    #     send(('Reply', (reqid, result)), to=client)
-
     def sync_up(last_block_id):
         # check what the status of other nodes are.
         # the last block it has
@@ -98,15 +85,19 @@ class Validator(process):
         send(("SyncUpResponse", (missing, pending_block_tree, last_block_id)), to=sender)
 
     def receive(msg=("SyncUpResponse", (missing, pending_block_tree, last_block_id)), from_=sender):
-        sync_up_collection[last_block_id].append((missing, pending_block_tree))
+        sync_up_collection[last_block_id].append(
+            (missing, pending_block_tree))
         if len(sync_up_collection[last_block_id]) == 2*Safety.f + 1:
             block_counts = {}
             commit_counts = {}
             to_execute_and_insert = []
             to_process = []
+            my_last_block_round = BlockTree.last_block.round
             for mis, pbt in sync_up_collection[last_block_id]:
                 for blocknode in pbt.values():
                     blk = blocknode.block
+                    if blk.round <= my_last_block_round:
+                        continue
                     if blk.id in block_counts:
                         block_counts[blk.id] += 1
                     else:
@@ -118,12 +109,14 @@ class Validator(process):
                         commit_counts[block.id] += 1
                     else:
                         commit_counts[block.id] = 1
-                    if block_counts[block.id] == Safety.f + 1:
+                    if commit_counts[block.id] == Safety.f + 1:
                         to_process.append(block)
 
             to_execute_and_insert.sort(key=lambda x: x.round)
 
             #print(f"To exc_a_ins: {[x.id for x in to_execute_and_insert]}")
+            #print(f"My PBT: {BlockTree.pending_block_tree}")
+            #print(f"My last block id: {BlockTree.last_block.id}")
             for block in to_execute_and_insert:
                 if block.round != 0:
                     BlockTree.execute_and_insert(block)
@@ -143,11 +136,11 @@ class Validator(process):
 
         # PSEUDOCODE: Block-Tree.process_qc(qc)
         committed_request = BlockTree.process_qc(qc)
-        # no clients to send responses to
-        # if committed_request:
-        #    # send reply to the client
-        #    if committed_request != '':
-        #        send_reply(committed_request)
+        # send information to executor for safety and liveness checking
+        if committed_request:
+            block_round, block_id = committed_request[0], committed_request[1]
+            send(("CommittedBlock", (block_round, block_id),
+                  Safety.validator_id), to=executor)
 
         # PSEUDOCODE: LeaderElection.update_leaders(qc)
         LeaderElection.update_leaders(qc)
@@ -156,6 +149,8 @@ class Validator(process):
         if PaceMaker.advance_round_qc(qc):
             Safety.log(
                 f"Advancing round {PaceMaker.current_round-1} because of qc.", "")
+            round_stop = True
+            round_start = True
 
     # PSEUDOCODE: Procedure process_proposal_msg(P)
     def process_proposal_msg(P, sender):
@@ -196,6 +191,8 @@ class Validator(process):
         if PaceMaker.advance_round_tc(P.last_round_tc):
             Safety.log(
                 f"Advancing round {PaceMaker.current_round -1} because of TC.", "")
+            round_stop = True
+            round_start = True
 
         # PSEUDOCODE: round <- PaceMaker.current_round
         current_round = PaceMaker.current_round
@@ -245,6 +242,8 @@ class Validator(process):
         if PaceMaker.advance_round_tc(M.last_round_tc):
             Safety.log(
                 f"Advancing round {PaceMaker.current_round-1} because of tc.", "")
+            round_stop = True
+            round_start = True
 
         # PSEUDOCODE: tc <- PaceMaker.process_remote_timeout(M)
         tc, M = PaceMaker.process_remote_timeout(M)
@@ -255,6 +254,8 @@ class Validator(process):
             if PaceMaker.advance_round_tc(tc):
                 Safety.log(
                     f"Advancing round {PaceMaker.current_round-1} because of tc.", "")
+                round_stop = True
+                round_start = True
 
             # PSEUDOCODE: process_new_round_event(tc)
             process_new_round_event(tc)
@@ -370,11 +371,12 @@ class Validator(process):
                 pass
             Safety.log("Round:", f"{PaceMaker.current_round} started.")
             round_start = False
+            round_stop = False
             timer_duration = PaceMaker.get_round_timer(PaceMaker.current_round)
             if await round_stop:
                 Safety.log("Round:", f"{PaceMaker.current_round} stopped.")
                 pass
-            elif timeout(timer_duration):
+            elif timeout(1):
                 Safety.log("Timing out in round:",
                            f"{PaceMaker.current_round}.")
                 M = PaceMaker.local_timeout_round()

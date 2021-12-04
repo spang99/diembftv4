@@ -62,7 +62,8 @@ def commit(block_id):
         commit_queue.popleft()
 
     Safety.log("Committed Block:", f"block_id: {block_id}")
-    return block.payload
+    # return block.payload
+    return (block.round, block.id)
 
 
 # PSEUDOCODE for updating other validators
@@ -70,7 +71,7 @@ def get_update_info(block_id):
     missing = []
     if block_id in commits:  # This means block id is in memory
         idx = commit_queue.index(commits[block_id])
-        missing = [commit_queue[i] for i in range(idx, len(commit_queue)-1)]
+        missing = [commit_queue[i] for i in range(idx+1, len(commit_queue)-1)]
     return missing
 #    else: (means block_id is in file)
 #        idx = index of block_id in file

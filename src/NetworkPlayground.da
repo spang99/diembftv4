@@ -14,6 +14,7 @@ class NetworkPlayground(process):
         self.validator_id_to_process = config['validator_id_to_process']
         self.finished = False
         self.executor = config['executor']
+        self.partitions = config['partitions']
         self.intercepted_messages = {
             "ProposalMsg": [], "TimeoutMsg": [], "VoteMsg": [], "LocalTimeout": []}
         log_folder = Path("./log")
@@ -35,7 +36,8 @@ class NetworkPlayground(process):
             f"Waiting for {num} {msg_type}(s). Currently have {len(intercepted_messages[msg_type])}")
         await(len(intercepted_messages[msg_type]) > num or finished)
         if not finished:
-            output("Got that many messages")
+            # take out the [0] if you want to actually send the whole list. May need to increase message
+            # buffer size.
             send(
                 ("GotMessages", intercepted_messages[msg_type][0]), to=test_executor)
 
@@ -52,30 +54,70 @@ class NetworkPlayground(process):
             return
         intercepted_messages["ProposalMsg"].append((P, sender_id))
         log(f"Intercepted ProposalMsg from {sender_id}: {P}")
-        send(("ProposalMsg", P, sender_id), to=validators)
+        #send(("ProposalMsg", P, sender_id), to=validators)
+        msg_round = P.block.round
+        if msg_round > len(partitions):
+            output("No partitions for this round")
+            send(("ProposalMsg", P, sender_id), to=validators)
+        else:
+            deliver_message("ProposalMsg", msg_round, P, sender_id)
 
     def receive(msg=("TimeoutMsg", M, sender_id), from_=sender):
         if finished:
             return
         intercepted_messages["TimeoutMsg"].append((M, sender_id))
         log(f"Intercepted TimeoutMsg from {sender_id}: {M}")
-        send(("TimeoutMsg", M, sender_id), to=validators)
+        #send(("TimeoutMsg", M, sender_id), to=validators)
+        msg_round = M.tmo_info.round
+        deliver_message("TimeoutMsg", msg_round, M, sender_id)
 
     def receive(msg=("VoteMsg", M, sender_id, next_rnd_leader), from_=sender):
         if finished:
             return
         intercepted_messages["VoteMsg"].append((M, sender_id, next_rnd_leader))
         log(f"Intercepted VotetMsg from {sender_id} to {next_rnd_leader}: {M}")
-        send(("VoteMsg", M, sender_id),
-             to=validator_id_to_process[next_rnd_leader])
+        #send(("VoteMsg", M, sender_id),to=validator_id_to_process[next_rnd_leader])
+        msg_round = M.vote_info.round
+        if msg_round > len(partitions):
+            output("No partitions for this round.")
+            send(("VoteMsg", M, sender_id),
+                 to=validator_id_to_process[next_rnd_leader])
+        else:
+            deliver_message("VoteMsg", msg_round, M,
+                            sender_id, next_rnd_leader)
+
+    # nxt_rnd_leader is only used in the case of VoteMsg, where there is a specific target
+    def deliver_message(msg_type, msg_round, M, sender_id, nxt_rnd_leader=None):
+        if msg_type == "ProposalMsg":
+            for partition in partitions[msg_round-1]:
+                # [-1] to extract just the letter from whole id. Ex: Validator_A -> A
+                if sender_id[-1] in partition:
+                    recipients = {
+                        validator_id_to_process["Validator_"+letter_id] for letter_id in partition}
+                    log(f"Delivering {msg_type} from {sender_id} to {partition}")
+                    send((msg_type, M, sender_id), to=recipients)
+                    return
+        elif msg_type == "VoteMsg":
+            for partition in partitions[msg_round-1]:
+                if sender_id[-1] in partition:
+                    if nxt_rnd_leader[-1] in partition:
+                        log(
+                            f"Delivering {msg_type} from {sender_id} to {nxt_rnd_leader[-1]}")
+                        send((msg_type, M, sender_id),
+                             to=validator_id_to_process[nxt_rnd_leader])
+                    else:
+                        return
+        elif msg_type == "TimeoutMsg":
+            # should not drop timeout messages (unless explicitly specified)
+            log(f"Delivering {msg_type} from {sender_id} to {validators}")
+            send((msg_type, M, sender_id), to=validators)
+        else:
+            output("Error in NetworkPlayground.deliver_messsage")
 
     def run(self):
         output(f"Running test case: {test_case_name}")
 
-        if await(finished):
-            pass
-        elif timeout(5):
-            output("Timed out waiting for executor to tell me to wrap it up.")
+        await(finished)
 
         await(each(v in validators, has=received(('Exiting',), from_=v)))
         send(('finished_test_case',), to=executor)
