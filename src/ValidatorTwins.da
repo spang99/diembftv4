@@ -14,10 +14,10 @@ config(channel='fifo', clock='Lamport')
 
 
 class Validator(process):
-    def setup(validators: set, exit_cnt: int, config):
+    def setup(validators: set, config):
         # output("Setting up validator")
         self.test_case_name = config['test_case_name']
-        self.parent = config['parent']
+        #self.parent = config['parent']
         self.public_keys = config['public_keys']
         Safety.set_private_key(config['private_key'])
         Safety.set_public_keys(config['public_keys'])
@@ -35,6 +35,7 @@ class Validator(process):
         # Leave this aside for now LeaderElection.setup_LeaderElectionTwins(config['round_leaders'])
         LeaderElection.setup_LeaderElection()
         self.network_playground = config['NP']
+        self.executor = config['executor']
         BlockTree.setup_BlockTree()  # Must be called after Safety is setup
         ledger_folder = Path("./ledgers")
         os.makedirs(ledger_folder, exist_ok=True)
@@ -382,4 +383,4 @@ class Validator(process):
 
         output(f"Exiting: {Safety.validator_id}")
         Safety.log("Exit:", Safety.validator_id)
-        send(('Exiting',), to=parent)
+        send(('Exiting',), to=network_playground)

@@ -1,5 +1,4 @@
 import ValidatorTwins
-from nacl.signing import SigningKey
 from pathlib import Path
 import os
 import datetime
@@ -11,12 +10,10 @@ config(channel='fifo', clock='Lamport')
 class NetworkPlayground(process):
     def setup(config):
         self.test_case_name = config['test_case_name']
-        self.validator_ids = config['validators']
-        self.validator_set = set()
-        self.validator_id_to_process = dict()
-        self.f = config['f']
+        self.validators = config['validators']
+        self.validator_id_to_process = config['validator_id_to_process']
         self.finished = False
-        self.parent = config['parent']
+        self.executor = config['executor']
         self.intercepted_messages = {
             "ProposalMsg": [], "TimeoutMsg": [], "VoteMsg": [], "LocalTimeout": []}
         log_folder = Path("./log")
@@ -40,10 +37,14 @@ class NetworkPlayground(process):
         if not finished:
             output("Got that many messages")
             send(
-                ("GotMessages", intercepted_messages[msg_type]), to=test_executor)
+                ("GotMessages", intercepted_messages[msg_type][0]), to=test_executor)
 
     def receive(msg=("TerminateValidators",), from_=test_executor):
         output("Got TerminateValidators from executor.")
+        self.finished = True
+
+    def receive(msg=("RunDone",), from_=test_executor):
+        output("Got RunDone from test executor.")
         self.finished = True
 
     def receive(msg=("ProposalMsg", P, sender_id), from_=sender):
@@ -51,14 +52,14 @@ class NetworkPlayground(process):
             return
         intercepted_messages["ProposalMsg"].append((P, sender_id))
         log(f"Intercepted ProposalMsg from {sender_id}: {P}")
-        send(("ProposalMsg", P, sender_id), to=validator_set)
+        send(("ProposalMsg", P, sender_id), to=validators)
 
     def receive(msg=("TimeoutMsg", M, sender_id), from_=sender):
         if finished:
             return
         intercepted_messages["TimeoutMsg"].append((M, sender_id))
         log(f"Intercepted TimeoutMsg from {sender_id}: {M}")
-        send(("TimeoutMsg", M, sender_id), to=validator_set)
+        send(("TimeoutMsg", M, sender_id), to=validators)
 
     def receive(msg=("VoteMsg", M, sender_id, next_rnd_leader), from_=sender):
         if finished:
@@ -70,46 +71,12 @@ class NetworkPlayground(process):
 
     def run(self):
         output(f"Running test case: {test_case_name}")
-        validators = new(ValidatorTwins.Validator, num=len(validator_ids))
-        validator_set = validators
-        validator_ids = ["Validator_"+val_id for val_id in validator_ids]
 
-        for i, val in enumerate(validators):
-            validator_id_to_process[validator_ids[i]] = val
-
-        validator_process_to_id = {v: k for k,
-                                   v in validator_id_to_process.items()}
-
-        validator_private_keys = {
-            validator_id: SigningKey.generate() for validator_id in validator_ids}
-        validator_public_keys = {
-            validator_id: validator_private_keys[validator_id].verify_key for validator_id in validator_ids}
-
-        for i, val in enumerate(validators):
-            config = {}
-            config['test_case_name'] = self.test_case_name
-            config['validator_id'] = validator_ids[i]
-            config['private_key'] = validator_private_keys[validator_ids[i]]
-            config['public_keys'] = validator_public_keys
-            config['f'] = f
-
-            config['validator_ids'] = validator_ids
-            # shouldn' need the following
-            #config['validator_id_to_process'] = validator_id_to_process
-            #config['validator_process_to_id'] = validator_process_to_id
-            config['parent'] = self
-            config['NP'] = self
-            setup(val, (validators - {val}, 0, config))
-
-        start(validators)
-
-        # this should be done by the executor -> never mind let's try it here
-        #send(('RunDone',), to=validators)
         if await(finished):
-            send(('RunDone',), to=validators)
+            pass
         elif timeout(5):
             output("Timed out waiting for executor to tell me to wrap it up.")
 
         await(each(v in validators, has=received(('Exiting',), from_=v)))
-        send(('finished_test_case',), to=parent)
+        send(('finished_test_case',), to=executor)
         output(f"Finished test case: {test_case_name}")

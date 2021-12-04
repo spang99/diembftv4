@@ -1,4 +1,6 @@
+import ValidatorTwins
 import NetworkPlayground
+from nacl.signing import SigningKey
 from pathlib import Path
 
 config(channel='fifo', clock='Lamport')
@@ -13,36 +15,70 @@ class TestExecutor(process):
         finished = True
 
     def run():
-        config = {
-            'test_case_name': "test_playground",
-            'validators': ['A', 'B', 'C', 'D'],
-            'f': 1,
-            'parent': self
-        }
+        test_case_name = "test_new_setup"
+        output(f"Running test case: {test_case_name}")
 
-        network_playground = new(NetworkPlayground.NetworkPlayground)
-        setup(network_playground, (config,))
-        start(network_playground)
-
-        num_validators = 4
+        # The executor is expected to read in the parameters of the scenario to execute
+        scenario_validator_ids = ['A', 'B', 'C', 'D']
         num_rounds = 10
-        num, msg_type = num_rounds*num_validators, "VoteMsg"
+        f = 1
+
+        # create playground for message interceptions
+        network_playground = new(NetworkPlayground.NetworkPlayground)
+        validators = new(ValidatorTwins.Validator,
+                         num=len(scenario_validator_ids))
+        validator_ids = ["Validator_" +
+                         val_id for val_id in scenario_validator_ids]
+
+        validator_id_to_process = {
+            validator_ids[i]: val for i, val in enumerate(validators)}
+
+        validator_private_keys = {
+            validator_id: SigningKey.generate() for validator_id in validator_ids}
+        validator_public_keys = {
+            validator_id: validator_private_keys[validator_id].verify_key for validator_id in validator_ids}
+
+        for i, val in enumerate(validators):
+            config = {
+                'test_case_name': test_case_name,
+                'validator_id': validator_ids[i],
+                'private_key': validator_private_keys[validator_ids[i]],
+                'public_keys': validator_public_keys,
+                'f': f,
+                'validator_ids': validator_ids,
+                'NP': network_playground,
+                'executor': self
+            }
+            setup(val, (validators - {val}, config))
+
+        config_np = {
+            "test_case_name": test_case_name,
+            "validators": validators,
+            "validator_id_to_process": validator_id_to_process,
+            "executor": self
+        }
+        setup(network_playground, (config_np,))
+        start(network_playground)
+        start(validators)
+
+        num, msg_type = num_rounds*len(validators), "VoteMsg"
         # check for right number of messages sent to deduce elapsed rounds
         output(
-            "Letting NetworkPlayground know I am waiting for {num} {msg_type}(s).")
+            f"Letting NetworkPlayground know I am waiting for {num} {msg_type}(s).")
         send(("WaitForMessages", (num, msg_type)), to=network_playground)
         if await(finished):
             pass
         elif timeout(4):
             output(
                 "TestExecutor timed out waiting for NetworkPlayground.WaitForMessages")
-        # Tell network playground to wrap it up
-        send(("TerminateValidators",), to=network_playground)
-        # then send RunDone to validators (or tell NP to do it?)
+
+        # finishe scenario
+        send(('RunDone',), to=validators)
+        send(('RunDone',), to=network_playground)
 
         await(each(r in {network_playground}, has=received(('finished_test_case',), from_=r)))
         send(('finished_cases',), to=nodeof(self))
-        output(f"Finished all test cases.")
+        output(f"Finished scenario.")
 
 
 def main():
