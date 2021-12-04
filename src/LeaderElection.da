@@ -14,6 +14,10 @@ window_size = None
 exclude_size = None
 reputation_leaders = {}
 
+# for twins mode
+round_leaders = None
+twins = False
+
 
 # Must be called after Safety is setup
 def setup_LeaderElection():
@@ -23,8 +27,15 @@ def setup_LeaderElection():
     exclude_size = Safety.f + 1
 
 
+def setup_LeaderElectionTwins(rnd_leaders):
+    global round_leaders, twins
+    round_leaders = rnd_leaders
+    twins = True
+
+
 def elect_reputation_leader(qc):
-    # print(f"{Safety.validator_id}: In function: LeaderElection.elect_reputation_leader")
+    if twins:
+        return
     global window_size, exclude_size
     # PSEUDOCODE(active_validators <- Empty Set)
     active_validators = []
@@ -72,7 +83,8 @@ def elect_reputation_leader(qc):
 
 
 def update_leaders(qc):
-    # print(f"{Safety.validator_id}: In function: LeaderElection.update_leaders.")
+    if twins:
+        return
     # if round is 4 or less, don't call elect_reputation_leaders as you don't have enough
     # voting history to generate a leader
     # PSEUDOCODE(current_round <- PaceMaker.current_round)
@@ -95,6 +107,8 @@ def update_leaders(qc):
 
 
 def get_leader(rnd):
+    if twins:
+        return round_leaders[rnd]
     global validators, reputation_leaders
     # print(f"{Safety.validator_id}: In function: LeaderElection.get_leader")
     # PSEUDOCODE(if (round, leader) in reputation_leaders then)
