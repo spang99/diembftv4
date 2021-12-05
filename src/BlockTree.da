@@ -199,12 +199,11 @@ def get_updates(block_id):
     missing = Ledger.get_update_info(block_id)
     return missing, pending_block_tree
 
-
 def update_node(missing_commits, pending_tree, send_commit_info):
     global pending_block_tree
-    check_latest = False # check if there is a commit not in the current node
+    check_latest = [False] # check if there is a commit not in the current node
     Ledger.update(missing_commits, send_commit_info, check_latest)
-    if check_latest is True:
+    if check_latest[0] is True:
         pending_block_tree = pending_tree
 
 

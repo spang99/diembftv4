@@ -81,14 +81,14 @@ def get_update_info(block_id):
 #        append all transactions from commit_queue
 
 
-def update(missing, send_commit_info, check):
+def update(missing, send_commit_info, check_latest):
     for block in missing:
         if block.id in commits: # Add condition in Validator to remove this
             continue
         f = open(filename, 'a')
         f.write(block.payload+"\n")
         f.close()
-        check = True
+        check_latest[0] = True
         block_id = block.id
         commits[block_id] = block  # storing in dictionary for quick retrieval
         # appending to commit_queue for updating other nodes if they fall back
