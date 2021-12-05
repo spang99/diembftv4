@@ -64,6 +64,7 @@ def commit(block_id):
     Safety.log("Committed Block:", f"block_id: {block_id}")
     # return block.payload
     BlockTree.last_block = block
+
     return (block.round, block.id)
 
 
@@ -72,7 +73,7 @@ def get_update_info(block_id):
     missing = []
     if block_id in commits:  # This means block id is in memory
         idx = commit_queue.index(commits[block_id])
-        missing = [commit_queue[i] for i in range(idx+1, len(commit_queue)-1)]
+        missing = [commit_queue[i] for i in range(idx+1, len(commit_queue))]
     return missing
 #    else: (means block_id is in file)
 #        idx = index of block_id in file
@@ -80,7 +81,7 @@ def get_update_info(block_id):
 #        append all transactions from commit_queue
 
 
-def update(missing):
+def update(missing, send_commit_info):
     for block in missing:
         if block.id in commits: # Add condition in Validator to remove this
             continue
@@ -101,6 +102,7 @@ def update(missing):
             commits.pop(commit_queue[0].id)
             commit_queue.popleft()
         BlockTree.last_block = block
+        send_commit_info("CommittedBlock", (block.round, block_id), Safety.validator_id)
         Safety.log("Updated Commit Block:", f"block_id: {block_id}")
 
 

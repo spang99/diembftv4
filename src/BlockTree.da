@@ -200,10 +200,10 @@ def get_updates(block_id):
     return missing, pending_block_tree
 
 
-def update_node(missing_commits, pending_tree):
+def update_node(missing_commits, pending_tree, send_commit_info):
     global pending_block_tree
     pending_block_tree = pending_tree
-    Ledger.update(missing_commits)
+    Ledger.update(missing_commits, send_commit_info)
 
 
 def process_qc(qc):

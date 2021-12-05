@@ -76,15 +76,15 @@ class Validator(process):
         # check what the status of other nodes are.
         # the last block it has
         sync_up_collection[last_block_id] = []
-        send(('SyncUpRequest', (last_block_id)), to=validators)
+        send(('SyncUpRequest', last_block_id), to=validators)
 
     def receive(msg=("SyncUpRequest", last_block_id), from_=sender):
         # send data to help validator sync up
         missing, pending_block_tree = BlockTree.get_updates(last_block_id)
-        send(("SyncUpResponse", (missing, pending_block_tree, last_block_id)), to=sender)
+        send(("SyncUpResponse", missing, pending_block_tree, last_block_id), to=sender)
 
-    def receive(msg=("SyncUpResponse", (missing, pending_block_tree, last_block_id)), from_=sender):
-        BlockTree.update_node(missing, pending_block_tree)
+    def receive(msg=("SyncUpResponse", missing, pending_block_tree, last_block_id), from_=sender):
+        BlockTree.update_node(missing, pending_block_tree, send_commit_info)
         # sync_up_collection[last_block_id].append(
         #     (missing, pending_block_tree))
         # if len(sync_up_collection[last_block_id]) == 2*Safety.f + 1:
@@ -133,6 +133,9 @@ class Validator(process):
 
     # PSEUDOCODE: Procedure process_certificate_qc(qc)
 
+    def send_commit_info(msg, block_info, sender):
+        send(("CommittedBlock", block_info, sender), to=executor)
+
     def process_certificate_qc(qc):
         if qc is None:
             return
@@ -142,8 +145,7 @@ class Validator(process):
         # send information to executor for safety and liveness checking
         if committed_request:
             block_round, block_id = committed_request[0], committed_request[1]
-            send(("CommittedBlock", (block_round, block_id),
-                  Safety.validator_id), to=executor)
+            send_commit_info("CommittedBlock", (block_round, block_id), Safety.validator_id)
 
         # PSEUDOCODE: LeaderElection.update_leaders(qc)
         LeaderElection.update_leaders(qc)
