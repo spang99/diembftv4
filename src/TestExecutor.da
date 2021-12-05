@@ -128,7 +128,5 @@ def main():
     config = dict()
     setup(executor, (config,))
     start(executor)
-    output("Here waiting")
     await(each(e in {executor}, has=received(('finished_cases',), from_=e)))
-    output("Done waiting")
     output("Finished all test cases.")
