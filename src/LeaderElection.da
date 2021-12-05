@@ -28,9 +28,10 @@ def setup_LeaderElection():
 
 
 def setup_LeaderElectionTwins(rnd_leaders):
-    global round_leaders, twins
+    global validator_ids, round_leaders, twins
     round_leaders = rnd_leaders
     twins = True
+    validator_ids = Safety.validator_ids
 
 
 def elect_reputation_leader(qc):
@@ -108,7 +109,10 @@ def update_leaders(qc):
 
 def get_leader(rnd):
     if twins:
-        return round_leaders[rnd]
+        if rnd > len(round_leaders):
+            return validator_ids[(rnd // 2) % len(validator_ids)]
+        else:
+            return "Validator_"+round_leaders[rnd-1]
     global validators, reputation_leaders
     # print(f"{Safety.validator_id}: In function: LeaderElection.get_leader")
     # PSEUDOCODE(if (round, leader) in reputation_leaders then)

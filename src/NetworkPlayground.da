@@ -57,7 +57,7 @@ class NetworkPlayground(process):
         #send(("ProposalMsg", P, sender_id), to=validators)
         msg_round = P.block.round
         if msg_round > len(partitions):
-            output("No partitions for this round")
+            #output("No partitions for this round")
             send(("ProposalMsg", P, sender_id), to=validators)
         else:
             deliver_message("ProposalMsg", msg_round, P, sender_id)
@@ -79,7 +79,7 @@ class NetworkPlayground(process):
         #send(("VoteMsg", M, sender_id),to=validator_id_to_process[next_rnd_leader])
         msg_round = M.vote_info.round
         if msg_round > len(partitions):
-            output("No partitions for this round.")
+            #output("No partitions for this round.")
             send(("VoteMsg", M, sender_id),
                  to=validator_id_to_process[next_rnd_leader])
         else:

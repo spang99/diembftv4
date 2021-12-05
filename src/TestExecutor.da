@@ -24,10 +24,16 @@ class TestExecutor(process):
 
     def is_safe():
         # validators commit chain should agree at all heights
-        # get min height of a validator
+        # get min height and max height of commits
         min_height = min([len(commit_list)
                          for commit_list in committed_blocks_lists.values()])
-        #max_height = max([len(commit_list) for commit_list in committed_blocks_lists.values()])
+        max_height = max([len(commit_list)
+                         for commit_list in committed_blocks_lists.values()])
+        if max_height > min_height+1:
+            # if max_height is only 1 greater than min_height this is fine, as it could mean the scenario was
+            # stopped after the final leader formed and processed a qc, but before it sent it out.
+            # Otherwise, something went wrong and safeness was violated.
+            return False
         for i in range(min_height):
             current_height_blocks = set()
             for commit_list in committed_blocks_lists.values():
@@ -37,12 +43,12 @@ class TestExecutor(process):
         return True
 
     def run():
-        test_case_name = "test_partitions_setup"
+        test_case_name = "test_rnd_leaders"
         output(f"Running test case: {test_case_name}")
 
         # The executor is expected to read in the parameters of the scenario to execute
         scenario_validator_ids = ['A', 'B', 'C', 'D']
-        num_rounds = 10
+        num_rounds = 7
         f = 1
         partitions = [
             [{'A', 'D', 'B', 'C'}],  # round 1
@@ -79,6 +85,7 @@ class TestExecutor(process):
                 'f': f,
                 'validator_ids': validator_ids,
                 'NP': network_playground,
+                # 'round_leaders': round_leaders,
                 'executor': self
             }
             setup(val, (validators - {val}, config))

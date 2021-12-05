@@ -24,16 +24,16 @@ class Validator(process):
         Safety.validator_id = config['validator_id']
         Safety.f = (config['f'])
         Safety.validator_ids = config['validator_ids']
-        #Safety.validator_id_to_process = config['validator_id_to_process']
-        #Safety.validator_process_to_id = config['validator_process_to_id']
         log_folder = Path("./log")
         os.makedirs(log_folder, exist_ok=True)
         fname = self.test_case_name + '_' + Safety.validator_id + '.log'
         Safety.log_path = log_folder / fname
         file = open(Safety.log_path, "w")
         file.close()
-        # Leave this aside for now LeaderElection.setup_LeaderElectionTwins(config['round_leaders'])
-        LeaderElection.setup_LeaderElection()
+        if 'round_leaders' in config:
+            LeaderElection.setup_LeaderElectionTwins(config['round_leaders'])
+        else:
+            LeaderElection.setup_LeaderElection()
         self.network_playground = config['NP']
         self.executor = config['executor']
         BlockTree.setup_BlockTree()  # Must be called after Safety is setup
@@ -47,8 +47,6 @@ class Validator(process):
         self.run_done = False
         self.round_start = False
         self.round_stop = False
-        self.drop_count = 0
-        self.to_drop = 28
         self.sync_up_collection = {}
         Safety.log("Initialized from config:",
                    f"test_case_name: {config['test_case_name']}")
@@ -94,9 +92,18 @@ class Validator(process):
             to_process = []
             my_last_block_round = BlockTree.last_block.round
             for mis, pbt in sync_up_collection[last_block_id]:
+                for block in mis:
+                    if block.round < my_last_block_round:
+                        continue
+                    if block.id in commit_counts:
+                        commit_counts[block.id] += 1
+                    else:
+                        commit_counts[block.id] = 1
+                    if commit_counts[block.id] == Safety.f + 1:
+                        to_process.append(block)
                 for blocknode in pbt.values():
                     blk = blocknode.block
-                    if blk.round <= my_last_block_round:
+                    if blk.round <= my_last_block_round or blk in to_process:
                         continue
                     if blk.id in block_counts:
                         block_counts[blk.id] += 1
@@ -104,29 +111,23 @@ class Validator(process):
                         block_counts[blk.id] = 1
                     if block_counts[blk.id] == Safety.f + 1:
                         to_execute_and_insert.append(blk)
-                for block in mis:
-                    if block.id in commit_counts:
-                        commit_counts[block.id] += 1
-                    else:
-                        commit_counts[block.id] = 1
-                    if commit_counts[block.id] == Safety.f + 1:
-                        to_process.append(block)
 
+            to_process.sort(key=lambda x: x.round)
             to_execute_and_insert.sort(key=lambda x: x.round)
-
+            #print(f"To process: {[x.payload for x in to_process]}")
             #print(f"To exc_a_ins: {[x.id for x in to_execute_and_insert]}")
             #print(f"My PBT: {BlockTree.pending_block_tree}")
             #print(f"My last block id: {BlockTree.last_block.id}")
+            for block in to_process:
+                if block == BlockTree.genesis_block or block == None:
+                    continue
+                if block.qc:
+                    process_certificate_qc(block.qc)
+                BlockTree.execute_and_insert(block)
+
             for block in to_execute_and_insert:
                 if block.round != 0:
                     BlockTree.execute_and_insert(block)
-
-            # for block in missing:
-            for block in to_process:
-                if block == BlockTree.genesis_block or block == None or block.qc == None:
-                    continue
-                process_certificate_qc(block.qc)
-                BlockTree.execute_and_insert(block)
 
     # PSEUDOCODE: Procedure process_certificate_qc(qc)
 
@@ -177,7 +178,7 @@ class Validator(process):
                            f"{block_id}. Will call sync up")
                 last_block_id = BlockTree.last_block.id
                 sync_up(last_block_id)
-                await(len(sync_up_collection[last_block_id]) >= 2*Safety.f + 1)
+                await((len(sync_up_collection[last_block_id]) >= 2*Safety.f + 1) or run_done)
                 Safety.log("Got catch up collection: ",
                            f"{sync_up_collection[last_block_id]}")
 
@@ -308,47 +309,24 @@ class Validator(process):
 
     # PSEUDOCODE: if M is a proposal message then process_proposal_msg(M)
     def receive(msg=("ProposalMsg", P, sender), from_=np):
-        # if faulty and drop_count < to_drop:
-        #    Safety.log("Dropping ProposalMsg:",
-        #               f"{{ sender: {sender}, Block: {{ {P.block} }}, last_round_tc: {{ {P.last_round_tc} }}, high_commit_qc: {{ {P.high_commit_qc} }}, signature: {P.signature} }}")
-        #    drop_count += 1
-        #    return
-
         Safety.log("Received ProposalMsg:",
                    f"{{ sender: {sender}, Block: {{ {P.block} }}, last_round_tc: {{ {P.last_round_tc} }}, high_commit_qc: {{ {P.high_commit_qc} }}, signature: {P.signature} }}")
         process_proposal_msg(P, sender)
 
     # PSEUDOCODE: if M is a timeout message then process_timeout_message(M)
     def receive(msg=("TimeoutMsg", M, sender), from_=np):
-        # if faulty and drop_count < to_drop:
-        #    Safety.log("Dropping TimeoutMsg:",
-        #               f"{{ sender: {sender}, tmo_info: {{ {M.tmo_info} }}, last_round_tc: {{ {M.last_round_tc} }}, high_commit_qc: {{ {M.high_commit_qc} }} }}")
-        #    drop_count += 1
-        #    return
-
         Safety.log("Received TimeoutMsg:",
                    f"{{ sender: {sender}, tmo_info: {{ {M.tmo_info} }}, last_round_tc: {{ {M.last_round_tc} }}, high_commit_qc: {{ {M.high_commit_qc} }} }}")
         process_timeout_msg(M)
 
     # PSEUDOCODE: if M is a vote message then process_vote_msg(M)
     def receive(msg=("VoteMsg", M, sender), from_=np):
-        # if faulty and drop_count < to_drop:
-        #    Safety.log("Dropping VoteMsg:",
-        #               f"{{ sender: {sender}, vote_info: {{ {M.vote_info} }}, ledger_commit_info: {{ {M.ledger_commit_info} }}, high_commit_qc: {{ {M.high_commit_qc} }}, signature: {M.signature} }}")
-        #    drop_count += 1
-        #    return
-
         Safety.log("Received VoteMsg:",
                    f"{{ sender: {sender}, vote_info: {{ {M.vote_info} }}, ledger_commit_info: {{ {M.ledger_commit_info} }}, high_commit_qc: {{ {M.high_commit_qc} }}, signature: {M.signature} }}")
         process_vote_msg(M)
 
     # PSEUDOCODE: if M is a local timeout then Pacemaker.local_timeout_round()
     def receive(msg=("LocalTimeout", M, sender), from_=np):
-        # if faulty and drop_count < to_drop:
-        #    Safety.log("Dropping LocalTimeout:",
-        #               f"sender: {sender}, message:{M}")
-        #    drop_count += 1
-        #    return
         Safety.log("Received LocalTimeout:",
                    f"sender: {sender}, message:{M}")
         PaceMaker.local_timeout_round()
