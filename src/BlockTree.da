@@ -202,8 +202,10 @@ def get_updates(block_id):
 
 def update_node(missing_commits, pending_tree, send_commit_info):
     global pending_block_tree
-    pending_block_tree = pending_tree
-    Ledger.update(missing_commits, send_commit_info)
+    check_latest = False # check if there is a commit not in the current node
+    Ledger.update(missing_commits, send_commit_info, check_latest)
+    if check_latest is True:
+        pending_block_tree = pending_tree
 
 
 def process_qc(qc):
