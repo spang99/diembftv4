@@ -63,6 +63,7 @@ def commit(block_id):
 
     Safety.log("Committed Block:", f"block_id: {block_id}")
     # return block.payload
+    BlockTree.last_block = block
     return (block.round, block.id)
 
 
@@ -81,6 +82,8 @@ def get_update_info(block_id):
 
 def update(missing):
     for block in missing:
+        if block.id in commits: # Add condition in Validator to remove this
+            continue
         f = open(filename, 'a')
         f.write(block.payload+"\n")
         f.close()
@@ -97,6 +100,7 @@ def update(missing):
             # commits_file.append()
             commits.pop(commit_queue[0].id)
             commit_queue.popleft()
+        BlockTree.last_block = block
         Safety.log("Updated Commit Block:", f"block_id: {block_id}")
 
 

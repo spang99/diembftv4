@@ -142,7 +142,7 @@ high_qc = None
 # PSEUDOCODE(pending_block_tree;)
 pending_block_tree = {}  # Use a dictionary, indexed by block id
 # Declaring as dictionary for quick search
-last_block = None
+last_block = None # gets populated in Ledger
 # PSEUDOCODE(pending_votes;)
 pending_votes = defaultdict(list)
 vote_idx = None
@@ -201,6 +201,7 @@ def get_updates(block_id):
 
 
 def update_node(missing_commits, pending_tree):
+    global pending_block_tree
     pending_block_tree = pending_tree
     Ledger.update(missing_commits)
 
@@ -247,8 +248,8 @@ def execute_and_insert(b):
     # Add itself to children of parent block (simulating a tree)
     # PSEUDOCODE(pending_block_tree.add(b))
     pending_block_tree[b.qc.vote_info.id].children.append(b.id)
-    global last_block
-    last_block = b
+    # global last_block
+    # last_block = b
 
 
 def verify_signature(v):

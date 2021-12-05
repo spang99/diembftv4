@@ -1,4 +1,5 @@
 import BlockTree
+from BlockTree import pending_block_tree_prune
 import LeaderElection
 import Ledger
 # import MemPool -> Don't need MemPool for Twins
@@ -83,51 +84,52 @@ class Validator(process):
         send(("SyncUpResponse", (missing, pending_block_tree, last_block_id)), to=sender)
 
     def receive(msg=("SyncUpResponse", (missing, pending_block_tree, last_block_id)), from_=sender):
-        sync_up_collection[last_block_id].append(
-            (missing, pending_block_tree))
-        if len(sync_up_collection[last_block_id]) == 2*Safety.f + 1:
-            block_counts = {}
-            commit_counts = {}
-            to_execute_and_insert = []
-            to_process = []
-            my_last_block_round = BlockTree.last_block.round
-            for mis, pbt in sync_up_collection[last_block_id]:
-                for block in mis:
-                    if block.round < my_last_block_round:
-                        continue
-                    if block.id in commit_counts:
-                        commit_counts[block.id] += 1
-                    else:
-                        commit_counts[block.id] = 1
-                    if commit_counts[block.id] == Safety.f + 1:
-                        to_process.append(block)
-                for blocknode in pbt.values():
-                    blk = blocknode.block
-                    if blk.round <= my_last_block_round or blk in to_process:
-                        continue
-                    if blk.id in block_counts:
-                        block_counts[blk.id] += 1
-                    else:
-                        block_counts[blk.id] = 1
-                    if block_counts[blk.id] == Safety.f + 1:
-                        to_execute_and_insert.append(blk)
+        BlockTree.update_node(missing, pending_block_tree)
+        # sync_up_collection[last_block_id].append(
+        #     (missing, pending_block_tree))
+        # if len(sync_up_collection[last_block_id]) == 2*Safety.f + 1:
+        #     block_counts = {}
+        #     commit_counts = {}
+        #     to_execute_and_insert = []
+        #     to_process = []
+        #     my_last_block_round = BlockTree.last_block.round
+        #     for mis, pbt in sync_up_collection[last_block_id]:
+        #         for block in mis:
+        #             if block.round < my_last_block_round:
+        #                 continue
+        #             if block.id in commit_counts:
+        #                 commit_counts[block.id] += 1
+        #             else:
+        #                 commit_counts[block.id] = 1
+        #             if commit_counts[block.id] == Safety.f + 1:
+        #                 to_process.append(block)
+        #         for blocknode in pbt.values():
+        #             blk = blocknode.block
+        #             if blk.round <= my_last_block_round or blk in to_process:
+        #                 continue
+        #             if blk.id in block_counts:
+        #                 block_counts[blk.id] += 1
+        #             else:
+        #                 block_counts[blk.id] = 1
+        #             if block_counts[blk.id] == Safety.f + 1:
+        #                 to_execute_and_insert.append(blk)
 
-            to_process.sort(key=lambda x: x.round)
-            to_execute_and_insert.sort(key=lambda x: x.round)
-            #print(f"To process: {[x.payload for x in to_process]}")
-            #print(f"To exc_a_ins: {[x.id for x in to_execute_and_insert]}")
-            #print(f"My PBT: {BlockTree.pending_block_tree}")
-            #print(f"My last block id: {BlockTree.last_block.id}")
-            for block in to_process:
-                if block == BlockTree.genesis_block or block == None:
-                    continue
-                if block.qc:
-                    process_certificate_qc(block.qc)
-                BlockTree.execute_and_insert(block)
+        #     to_process.sort(key=lambda x: x.round)
+        #     to_execute_and_insert.sort(key=lambda x: x.round)
+        #     #print(f"To process: {[x.payload for x in to_process]}")
+        #     #print(f"To exc_a_ins: {[x.id for x in to_execute_and_insert]}")
+        #     #print(f"My PBT: {BlockTree.pending_block_tree}")
+        #     #print(f"My last block id: {BlockTree.last_block.id}")
+        #     for block in to_process:
+        #         if block == BlockTree.genesis_block or block == None:
+        #             continue
+        #         if block.qc:
+        #             process_certificate_qc(block.qc)
+        #         BlockTree.execute_and_insert(block)
 
-            for block in to_execute_and_insert:
-                if block.round != 0:
-                    BlockTree.execute_and_insert(block)
+        #     for block in to_execute_and_insert:
+        #         if block.round != 0:
+        #             BlockTree.execute_and_insert(block)
 
     # PSEUDOCODE: Procedure process_certificate_qc(qc)
 
