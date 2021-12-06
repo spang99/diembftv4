@@ -1,0 +1,5 @@
+Test Report
+
+Test Case 1:
+nodes = ['A', 'B', 'C', 'D']
+target_nodes = ['X']
