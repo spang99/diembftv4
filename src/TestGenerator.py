@@ -169,4 +169,4 @@ def select_test_configurations(no_of_parts, num_partitions, is_partition_random,
     f.write(str(ret_tests) + '\n' + str(ret_leaders))
     # f.write(str(ret_leaders) + '\n')
     f.close()
-    return
+    return ret_tests, ret_leaders

@@ -11,6 +11,9 @@ class TestExecutor(process):
     def setup(config):
         self.finished = False
         self.committed_blocks_lists = dict()
+        self.round_leaders = config['round_leaders']
+        self.scenario_validator_ids = config['scenario_validator_ids']
+        self.partitions = config['partitions']
 
     def receive(msg=("GotMessages", msg_list), from_=np):
         output("Received the messages from the NetworkPlayground")
@@ -49,19 +52,21 @@ class TestExecutor(process):
         output(f"Running test case: {test_case_name}")
 
         # The executor is expected to read in the parameters of the scenario to execute
-        scenario_validator_ids = ['A', 'B', 'C', 'D', 'X']
-        num_rounds = 3
+        # scenario_validator_ids = ['A', 'B', 'C', 'D', 'X']
+        num_rounds = len(round_leaders)
         f = 1
-        partitions = [
-            [['A', 'D', 'B'], ['C', 'X']],  # round 1
-            [['D', 'A', 'B'], ['C', 'X']],  # round 2
-            [['A', 'D', 'C'], ['B', 'X']],  # round 3
-            [{'A', 'D', 'C'}, {'B', 'X'}],  # round 4
-            [{'C', 'B', 'D'}, {'A', 'X'}],  # round 5
-            [{'C', 'B', 'D'}, {'A', 'X'}],  # round 6
-            [{'A', 'C', 'D'}, {'B', 'X'}]  # round 7
-        ]
-        round_leaders = [['B'], ['A', 'X'], ['B'], ['D'], ['A', 'X'], ['B'], ['D']]
+        # partitions = [
+        #     [['A', 'D', 'B'], ['C', 'X']],  # round 1
+        #     [['D', 'A', 'B'], ['C', 'X']],  # round 2
+        #     [['A', 'D', 'C'], ['B', 'X']],  # round 3
+        #     [['A', 'D', 'C'], ['B', 'X']],  # round 4
+        #     [['C', 'B', 'D'], ['A', 'X']],  # round 5
+        #     [['C', 'B', 'D'], ['A', 'X']],  # round 6
+        #     [['A', 'C', 'D'], ['B', 'X']]  # round 7
+        # ]
+        # round_leaders = [['B'], ['A', 'X'], ['B'], ['D'], ['A', 'X'], ['B'], ['D']]
+
+
 
         # create playground for message interceptions
         network_playground = new(NetworkPlayground.NetworkPlayground)
