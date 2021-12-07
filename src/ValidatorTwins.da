@@ -75,7 +75,7 @@ class Validator(process):
     def sync_up(last_block_id):
         # check what the status of other nodes are.
         # the last block it has
-        sync_up_collection[last_block_id] = []
+        # sync_up_collection[last_block_id] = []
         send(('SyncUpRequest', last_block_id), to=validators)
 
     def receive(msg=("SyncUpRequest", last_block_id), from_=sender):
@@ -160,11 +160,14 @@ class Validator(process):
     # PSEUDOCODE: Procedure process_proposal_msg(P)
     def process_proposal_msg(P, sender):
         # signature verification
+        # output('************Proposal Message Processing**************')
         if validate_signature(sender, P.signature) == False:
             return
         # check the signatures contained within the proposal using function from safety module
         if (Safety.valid_signatures(P.block.qc, P.last_round_tc) == False or Safety.valid_signatures(P.high_commit_qc, None) == False):
             return
+        # output('************Proposal Message Signature Checked**************')
+
 
         # Just first check that we have all corresponding metadata
         block_qc_vote_info = P.block.qc.vote_info if P.block.qc else None
@@ -182,9 +185,9 @@ class Validator(process):
                            f"{block_id}. Will call sync up")
                 last_block_id = BlockTree.last_block.id
                 sync_up(last_block_id)
-                await((len(sync_up_collection[last_block_id]) >= 2*Safety.f + 1) or run_done)
-                Safety.log("Got catch up collection: ",
-                           f"{sync_up_collection[last_block_id]}")
+                # await((len(sync_up_collection[last_block_id]) >= 2*Safety.f + 1) or run_done)
+                # Safety.log("Got catch up collection: ",
+                #            f"{sync_up_collection[last_block_id]}")
 
         # PSEUDOCODE: process_certificate_qc(P.block.qc)
         process_certificate_qc(P.block.qc)

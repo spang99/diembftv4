@@ -25,6 +25,8 @@ class TestExecutor(process):
     def is_safe():
         # validators commit chain should agree at all heights
         # get min height and max height of commits
+        if (len(committed_blocks_lists) is 0):
+            return True
         min_height = min([len(commit_list)
                          for commit_list in committed_blocks_lists.values()])
         max_height = max([len(commit_list)
@@ -47,19 +49,19 @@ class TestExecutor(process):
         output(f"Running test case: {test_case_name}")
 
         # The executor is expected to read in the parameters of the scenario to execute
-        scenario_validator_ids = ['A', 'B', 'C', 'D']
-        num_rounds = 7
+        scenario_validator_ids = ['A', 'B', 'C', 'D', 'X']
+        num_rounds = 3
         f = 1
         partitions = [
-            [{'A', 'D', 'B', 'C'}],  # round 1
-            [{'D', 'A', 'B'}, {'C'}],  # round 2
-            [{'A', 'D', 'B'}, {'C'}],  # round 3
-            [{'A', 'D', 'B'}, {'C'}],  # round 4
-            [{'A', 'B', 'D'}, {'C'}],  # round 5
-            [{'A', 'B', 'D'}, {'C'}],  # round 6
-            [{'A', 'B', 'D'}, {'C'}]  # round 7
+            [['A', 'D', 'B'], ['C', 'X']],  # round 1
+            [['D', 'A', 'B'], ['C', 'X']],  # round 2
+            [['A', 'D', 'C'], ['B', 'X']],  # round 3
+            [{'A', 'D', 'C'}, {'B', 'X'}],  # round 4
+            [{'C', 'B', 'D'}, {'A', 'X'}],  # round 5
+            [{'C', 'B', 'D'}, {'A', 'X'}],  # round 6
+            [{'A', 'C', 'D'}, {'B', 'X'}]  # round 7
         ]
-        round_leaders = [['B'], ['A'], ['B'], ['D'], ['A'], ['B'], ['D']]
+        round_leaders = [['B'], ['A', 'X'], ['B'], ['D'], ['A', 'X'], ['B'], ['D']]
 
         # create playground for message interceptions
         network_playground = new(NetworkPlayground.NetworkPlayground)
@@ -76,7 +78,10 @@ class TestExecutor(process):
         validator_public_keys = {
             validator_id: validator_private_keys[validator_id].verify_key for validator_id in validator_ids}
         
-        
+        # print(f'*************keys for {validator_ids[-1]} will be same as {validator_ids[0]}**************')
+        print(f'{validator_id_to_process}')
+        validator_private_keys[validator_ids[-1]] = validator_private_keys[validator_ids[0]]
+        validator_public_keys[validator_ids[-1]] = validator_public_keys[validator_ids[0]]
 
         for i, val in enumerate(validators):
             config = {
