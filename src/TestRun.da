@@ -12,9 +12,7 @@ def main():
         generator_config = {}
         for line in file:
             arguments = line.split('=')
-            # print(arguments)
             key = arguments[0].strip()
-
             if key == 'nodes':
                 nodes = arguments[1].split(',')
                 nodes = [node.strip() for node in nodes]
@@ -42,8 +40,6 @@ def main():
             elif key == 'rounds':
                 rounds = int(arguments[1].strip())
                 generator_config['rounds'] = rounds
-    nodes = ['A', 'B', 'C', 'D']
-    target_nodes = ['X']
 
     TestGenerator.initialize(generator_config['nodes'], generator_config['target_nodes'])
     TestGenerator.createAllPartitions()
@@ -52,6 +48,6 @@ def main():
                                              generator_config['num_leaders_req'], generator_config['is_leader_random'],
                                              generator_config['rounds'])
 
-    # te = new(TestExecutor.TestExecutor, num=1)
-    # setup(te, nodes, target_nodes)
-    # start(te)
+    te = new(TestExecutor.TestExecutor, num=1)
+    setup(te, nodes, target_nodes)
+    start(te)
