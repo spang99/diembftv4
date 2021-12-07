@@ -1,5 +1,138 @@
 Test Report
 
-Test Case 1:
+Test Case 1 (Manually Created Partitions):
 nodes = ['A', 'B', 'C', 'D']
 target_nodes = ['X']
+rounds: 7
+partitions = [
+    [['A', 'D', 'B'], ['C', 'X']],  # round 1
+    [['D', 'A', 'B'], ['C', 'X']],  # round 2
+    [['A', 'D', 'B'], ['C', 'X']],  # round 3
+    [['A', 'D', 'B'], ['C', 'X']],  # round 4
+    [['C', 'B', 'A'], ['C', 'X']],  # round 5
+    [['C', 'B', 'A'], ['C', 'X']],  # round 6
+    [['A', 'C', 'B'], ['C', 'X']]  # round 7
+]
+round_leaders = [['B'], ['A', 'X'], ['B'], ['D'], ['A', 'X'], ['B'], ['D']]
+
+Test Case 2 (Manually Created Partitions):
+nodes = ['A', 'B', 'C', 'D']
+target_nodes = ['X']
+rounds: 7
+partitions = [
+    [['A', 'D', 'B'], ['C', 'X']],  # round 1
+    [['D', 'A', 'B'], ['C', 'X']],  # round 2
+    [['A', 'D', 'B'], ['C', 'X']],  # round 3
+    [['A', 'D', 'B'], ['C', 'X']],  # round 4
+    [['C', 'A', 'D'], ['B', 'X']],  # round 5
+    [['C', 'A', 'D'], ['B', 'X']],  # round 6
+    [['A', 'C', 'D'], ['B', 'X']]  # round 7
+]
+round_leaders = [['B'], ['A', 'X'], ['B'], ['A', 'X'], ['D'], ['B'], ['D']]
+
+Test Case 3 (Manually Created Partitions):
+nodes = ['A', 'B', 'C', 'D']
+target_nodes = ['X']
+rounds: 7
+partitions = [
+    [['A', 'D', 'B'], ['C', 'X']],  # round 1
+    [['D', 'A', 'B'], ['C', 'X']],  # round 2
+    [['A', 'D', 'C'], ['B', 'X']],  # round 3
+    [['A', 'D', 'C'], ['B', 'X']],  # round 4
+    [['A', 'B', 'D'], ['C', 'X']],  # round 5
+    [['A', 'B', 'D'], ['C', 'X']],  # round 6
+    [['A', 'B', 'D'], ['C', 'X']]  # round 7
+]
+round_leaders = [['B'], ['A', 'X'], ['B'], ['D'], ['A', 'X'], ['D'], ['B']]
+
+Test Case 4 (Manually Created Partitions):
+nodes = ['A', 'B', 'C', 'D']
+target_nodes = ['X']
+rounds: 7
+partitions = [
+    [['A', 'D', 'B'], ['C', 'X']],  # round 1
+    [['D', 'A', 'B'], ['C', 'X']],  # round 2
+    [['A', 'D', 'C'], ['B', 'X']],  # round 3
+    [['A', 'D', 'C'], ['B', 'X']],  # round 4
+    [['C', 'B', 'D'], ['A', 'X']],  # round 5
+    [['C', 'B', 'D'], ['A', 'X']],  # round 6
+    [['A', 'C', 'D'], ['A', 'X']]  # round 7
+]
+round_leaders = [['B'], ['A', 'X'], ['B'], ['D'], ['A', 'X'], ['B'], ['D']]
+
+Test Case 5 (Manually Created Partitions):
+nodes = ['A', 'B', 'C', 'D']
+target_nodes = ['X']
+rounds: 7
+partitions = [
+    [['A', 'D', 'B'], ['C', 'X']],  # round 1
+    [['D', 'A', 'B'], ['C', 'X']],  # round 2
+    [['A', 'D', 'C'], ['B', 'X']],  # round 3
+    [['A', 'D', 'C'], ['B', 'X']],  # round 4
+    [['C', 'A', 'D'], ['B', 'X']],  # round 5
+    [['C', 'B', 'D'], ['A', 'X']],  # round 6
+    [['A', 'C', 'D'], ['B', 'X']]  # round 7
+]
+round_leaders = [['B'], ['A', 'X'], ['B'], ['D'], ['A', 'X'], ['B'], ['D']]
+
+Test Case 6 (Manually Created Partitions):
+nodes = ['A', 'B', 'C', 'D']
+target_nodes = ['X']
+rounds: 7
+partitions = [
+    [['A', 'D', 'B'], ['C', 'X']],  # round 1
+    [['D', 'A', 'B'], ['C', 'X']],  # round 2
+    [['A', 'D', 'C'], ['B', 'X']],  # round 3
+    [['A', 'D', 'C'], ['B', 'X']],  # round 4
+    [['C', 'B', 'D'], ['A', 'X']],  # round 5
+    [['C', 'B', 'D'], ['A', 'X']],  # round 6
+    [['A', 'C', 'D'], ['B', 'X']]  # round 7
+]
+round_leaders = [['B'], ['A', 'X'], ['B'], ['D'], ['A', 'X'], ['B'], ['D']]
+
+Test Case 7 (Partitions Created Using Test Generator):
+nodes = ['A', 'B', 'C', 'D']
+target_nodes = ['X']
+rounds: 7
+partitions = [
+    [['A', 'X'], ['C', 'X'], ['D', 'B']],
+    [['D'], ['B', 'X'], ['C', 'A', 'X']], 
+    [['C'], ['A', 'X'], ['D', 'B'], ['X']],
+    [['C', 'D', 'X'], ['B'], ['A', 'X']],
+    [['D', 'A'], ['B', 'X'], ['C']],
+    [['A', 'B'], ['C', 'D', 'X']],
+    [['A'], ['B', 'C', 'D', 'X']]]
+round_leaders = [['A', 'X'], ['D'], ['A', 'X'], ['B'], ['A', 'X'], ['B'], ['D']]
+
+Test Case 7 (Partitions Created Using Test Generator):
+nodes = ['A', 'B', 'C', 'D']
+target_nodes = ['X']
+rounds: 7
+partitions = [
+    [['C', 'X', 'B'], ['A', 'D']],
+    [['D', 'B', 'C'], ['A', 'X']],
+    [['A', 'C'], ['D', 'B'], ['X']],
+    [['A', 'D', 'B', 'C'], ['X']],
+    [['C', 'B'], ['A', 'X', 'D']],
+    [['A', 'B'], ['D']],
+    [['A'], ['C', 'D']]
+]
+round_leaders = [['A', 'X'], ['C'], ['A', 'X'], ['B'], ['D'], ['B'], ['D']]
+
+Test Case 7 (Partitions Created Using Test Generator):
+nodes = ['A', 'B', 'C', 'D']
+target_nodes = ['X']
+rounds: 10
+partitions = [
+    [['A', 'C', 'X'], ['D', 'B']],
+    [['A', 'C'], ['X', 'D', 'B']],
+    [['C', 'B'], ['A', 'D', 'X']],
+    [['X', 'B'], ['A'], ['D', 'C']],
+    [['A', 'D'], ['X', 'C', 'B']],
+    [['X'], ['A', 'D', 'C', 'B']],
+    [['X', 'C', 'D', 'A', 'B']],
+    [['C'], ['X'], ['A', 'B'], ['D']],
+    [['A', 'B'], ['C', 'D']],
+    [['A'], ['B', 'C', 'D']]
+]
+round_leaders = [['C'], ['C'], ['A', 'X'], ['A', 'X'], ['A', 'X'], ['D'], ['B'], ['D'], ['B'], ['D']]

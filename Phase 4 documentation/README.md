@@ -4,7 +4,8 @@ Platform:
 For our implementation, we used pyDistAlgo version 1.1.0b15 and CPython version 3.7. The operating systems used are macOS OS 10.14 and Windows 10. This program is hosted on a laptop.
 
 Bugs and Limitations:
-1. We were facing errors where nothing was committed to ledger files when testing our implementation with Twins.
+1. There is a key does not exist error that is popping up but seems it is not causing any harm to the consensus. This invalid access could be in some debug statements
+2. We have not extensively tested our code for 7 honest validators with 2 faulty nodes 
 
 Main files:
 diembftv4\TestGenerator.da contains the code to generate test cases given a list of nodes and twins.
@@ -25,5 +26,5 @@ Receive Handlers: 7
 
 Contributions:
 Nasratullah: TestExecutor.da, NetworkPlayground.da, sync up
-Sudipto: TestGenerator.da, sync up, TestExecutor.da, NetworkPlayground.da
-Stella: config reading, TestExecutor, NetworkPlayground
+Sudipto: TestGenerator.da, TestExecutor.da, NetworkPlayground.da, sync up, README, Test Report
+Stella: config reading, TestExecutor, NetworkPlayground, README
