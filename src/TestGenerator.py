@@ -160,9 +160,9 @@ def select_test_configurations(no_of_parts, num_partitions, is_partition_random,
     # the last test cases should not result in timeouts
     half = int(len(honest_leaders)/2)
 
-    ret_tests.append([honest_leaders[0:half], honest_leaders[half+1:]])
+    ret_tests.append([honest_leaders[0:half], honest_leaders[half:]])
     ret_leaders.append([honest_leaders[len(twins)]])
-    ret_tests.append([honest_leaders[0:half-1], honest_leaders[half:]])
+    ret_tests.append([honest_leaders[0:half-1], honest_leaders[half-1:]])
     ret_leaders.append([honest_leaders[half+1]])
 
     f = open("test_cases.txt", 'w')
