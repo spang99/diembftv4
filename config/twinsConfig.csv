@@ -1,0 +1,9 @@
+nodes = A, B  , C, D
+target_nodes = X
+no_of_parts = 2, 3
+num_partitions = 10
+is_partition_random = True
+num_leaders_req = 10
+is_leader_random = True
+rounds = 7
+
