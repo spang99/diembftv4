@@ -7,13 +7,13 @@ https://pypi.org/project/PyNaCl/ for instructions on how to do so.
 
 To run the program, go to the directory diembftv4
 
-DiemBFT v4 the command:
-python -m da --message-buffer-size 300240 src\TestRun.py
-if running on MacOS or Linux, user '/' instead of '\'
-
 Twins - Type the command:
+python -m da --message-buffer-size 300240 src\TestRun.da
+if running on MacOS or Linux, use '/' instead of '\'
+
+DiemBFT v4 - Type the command:
 python -m da --message-buffer-size 300240 src\Executor.da
-if running on MacOS or Linux, user '/' instead of '\'
+if running on MacOS or Linux, use '/' instead of '\'
 
 This will generate log files in log/ and ledger files in ledgers/ directories.
 
