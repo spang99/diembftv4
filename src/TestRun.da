@@ -53,16 +53,16 @@ def main():
     ]
     round_leaders = [['B'], ['A', 'X'], ['B'], ['D'], ['A', 'X'], ['B'], ['D']]
 
-    TestGenerator.initialize(generator_config['nodes'], generator_config['target_nodes'])
-    TestGenerator.createAllPartitions()
-    partitions, round_leaders = TestGenerator.select_test_configurations(generator_config['no_of_parts'], generator_config['num_partitions'],
-                                             generator_config['is_partition_random'],
-                                             generator_config['num_leaders_req'], generator_config['is_leader_random'],
-                                             generator_config['rounds'])
+    # TestGenerator.initialize(generator_config['nodes'], generator_config['target_nodes'])
+    # TestGenerator.createAllPartitions()
+    # partitions, round_leaders = TestGenerator.select_test_configurations(generator_config['no_of_parts'], generator_config['num_partitions'],
+    #                                          generator_config['is_partition_random'],
+    #                                          generator_config['num_leaders_req'], generator_config['is_leader_random'],
+    #                                          generator_config['rounds'])
 
     te_config = {}
     te_config['round_leaders'] = round_leaders
-    te_config['scenario_validator_ids'] = nodes
+    te_config['scenario_validator_ids'] = nodes+target_nodes
     te_config['partitions'] = partitions
 
     print(f'Sending to TE: {te_config}')
