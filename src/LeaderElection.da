@@ -110,12 +110,11 @@ def update_leaders(qc):
 def get_leader(rnd):
     if twins:
         if rnd > len(round_leaders):
-            return validator_ids[(rnd // 2) % len(validator_ids)]
+            return [validator_ids[(rnd // 2) % len(validator_ids)]]
         else:
             ret = []
             for ldr in round_leaders[rnd-1]:
                 ret.append("Validator_"+ldr)
-            output(f'Leaders for round {rnd} is {ret}')
             return ret
     global validators, reputation_leaders
     # print(f"{Safety.validator_id}: In function: LeaderElection.get_leader")

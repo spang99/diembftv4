@@ -87,7 +87,7 @@ class NetworkPlayground(process):
                  to=next_leaders)
         else:
             deliver_message("VoteMsg", msg_round, M,
-                            sender_id, next_leaders)
+                            sender_id, next_rnd_leader)
 
     # nxt_rnd_leader is only used in the case of VoteMsg, where there is a specific target
     def deliver_message(msg_type, msg_round, M, sender_id, nxt_rnd_leader=None):
@@ -103,13 +103,12 @@ class NetworkPlayground(process):
         elif msg_type == "VoteMsg":
             for partition in partitions[msg_round-1]:
                 if sender_id[-1] in partition:
-                    if nxt_rnd_leader[-1] in partition:
-                        log(
-                            f"Delivering {msg_type} from {sender_id} to {nxt_rnd_leader[-1]}")
-                        send((msg_type, M, sender_id),
-                             to=validator_id_to_process[nxt_rnd_leader])
-                    else:
-                        return
+                    for ldr in nxt_rnd_leader:
+                        if ldr[-1] in partition:
+                            send((msg_type, M, sender_id), to=validator_id_to_process[ldr])
+                            log(f'Message sent')
+
+            return
         elif msg_type == "TimeoutMsg":
             # should not drop timeout messages (unless explicitly specified)
             log(f"Delivering {msg_type} from {sender_id} to {validators}")

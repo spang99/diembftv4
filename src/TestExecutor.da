@@ -59,7 +59,7 @@ class TestExecutor(process):
             [{'A', 'B', 'D'}, {'C'}],  # round 6
             [{'A', 'B', 'D'}, {'C'}]  # round 7
         ]
-        round_leaders = ['A', 'A', 'B', 'D', 'A', 'B', 'D']
+        round_leaders = [['B'], ['A'], ['B'], ['D'], ['A'], ['B'], ['D']]
 
         # create playground for message interceptions
         network_playground = new(NetworkPlayground.NetworkPlayground)
@@ -75,6 +75,8 @@ class TestExecutor(process):
             validator_id: SigningKey.generate() for validator_id in validator_ids}
         validator_public_keys = {
             validator_id: validator_private_keys[validator_id].verify_key for validator_id in validator_ids}
+        
+        
 
         for i, val in enumerate(validators):
             config = {
@@ -85,7 +87,7 @@ class TestExecutor(process):
                 'f': f,
                 'validator_ids': validator_ids,
                 'NP': network_playground,
-                # 'round_leaders': round_leaders,
+                'round_leaders': round_leaders,
                 'executor': self
             }
             setup(val, (validators - {val}, config))
