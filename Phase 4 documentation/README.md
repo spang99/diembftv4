@@ -4,6 +4,7 @@ Platform:
 For our implementation, we used pyDistAlgo version 1.1.0b15 and CPython version 3.7. The operating systems used are macOS OS 10.14 and Windows 10. This program is hosted on a laptop.
 
 Bugs and Limitations:
+1. We were facing errors where nothing was committed to ledger files when testing our implementation with Twins.
 
 Main files:
 diembftv4\TestGenerator.da contains the code to generate test cases given a list of nodes and twins.
@@ -23,6 +24,6 @@ Await Statements: 7
 Receive Handlers: 7
 
 Contributions:
-Nasratullah: 
-Sudipto: 
-Stella: 
+Nasratullah: TestExecutor.da, NetworkPlayground.da, sync up
+Sudipto: TestGenerator.da, sync up, TestExecutor.da, NetworkPlayground.da
+Stella: config reading, TestExecutor, NetworkPlayground

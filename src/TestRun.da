@@ -1,5 +1,6 @@
 import TestExecutor
 import TestGenerator
+from pathlib import Path
 
 config(channel='fifo', clock='Lamport')
 
@@ -48,6 +49,6 @@ def main():
                                              generator_config['num_leaders_req'], generator_config['is_leader_random'],
                                              generator_config['rounds'])
 
-    te = new(TestExecutor.TestExecutor, num=1)
-    setup(te, nodes, target_nodes)
+    te = new(TestExecutor.TestExecutor)
+    setup(te, {})
     start(te)

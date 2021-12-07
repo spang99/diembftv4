@@ -1,4 +1,4 @@
-nodes = A, B  , C, D
+nodes = A, B, C, D
 target_nodes = X
 no_of_parts = 2, 3
 num_partitions = 10
