@@ -78,13 +78,16 @@ class NetworkPlayground(process):
         log(f"Intercepted VotetMsg from {sender_id} to {next_rnd_leader}: {M}")
         #send(("VoteMsg", M, sender_id),to=validator_id_to_process[next_rnd_leader])
         msg_round = M.vote_info.round
+        next_leaders = set()
+        for next_rnd_ldr in next_rnd_leader:
+            next_leaders.add(validator_id_to_process[next_rnd_ldr])
         if msg_round > len(partitions):
             #output("No partitions for this round.")
             send(("VoteMsg", M, sender_id),
-                 to=validator_id_to_process[next_rnd_leader])
+                 to=next_leaders)
         else:
             deliver_message("VoteMsg", msg_round, M,
-                            sender_id, next_rnd_leader)
+                            sender_id, next_leaders)
 
     # nxt_rnd_leader is only used in the case of VoteMsg, where there is a specific target
     def deliver_message(msg_type, msg_round, M, sender_id, nxt_rnd_leader=None):

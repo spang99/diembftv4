@@ -207,7 +207,7 @@ class Validator(process):
 
         # PSEUDOCODE: if P.block.round != round or P.sender != leader or P.block.author != leader then
         #               return
-        if (P.block.round != current_round) or (sender != leader) or (P.block.author != leader):
+        if (P.block.round != current_round) or (sender not in leader) or (P.block.author not in leader):
             Safety.log("Dropping Proposal due to inconsistent metadata:",
                        f"Block Round:{P.block.round},Current Round:{current_round},Sender:{sender},Leader:{str(leader)},Block Author: {P.block.author}")
             return
@@ -293,7 +293,7 @@ class Validator(process):
         current_round = PaceMaker.current_round
 
         # PSEUDOCODE: if u = LeaderElection.get_leader(PaceMaker.current_round) then
-        if Safety.validator_id == LeaderElection.get_leader(current_round):
+        if Safety.validator_id in LeaderElection.get_leader(current_round):
             # if no pending transactions, don't propose empty blocks, but rather wait for requests to come in
             if run_done:
                 # allow validator to exit
