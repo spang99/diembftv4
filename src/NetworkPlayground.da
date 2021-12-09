@@ -91,7 +91,13 @@ class NetworkPlayground(process):
 
     # nxt_rnd_leader is only used in the case of VoteMsg, where there is a specific target
     def deliver_message(msg_type, msg_round, M, sender_id, nxt_rnd_leader=None):
+        if (msg_round%10 is 4) and (msg_type is not "TimeoutMsg"):
+            log('Dropping all intra-partition messages')
+            return
         if msg_type == "ProposalMsg":
+            if msg_round%7 is 6:
+                log('Dropping proposal message')
+                return
             for partition in partitions[msg_round-1]:
                 # [-1] to extract just the letter from whole id. Ex: Validator_A -> A
                 if sender_id[-1] in partition:
@@ -101,6 +107,9 @@ class NetworkPlayground(process):
                     send((msg_type, M, sender_id), to=recipients)
                     return
         elif msg_type == "VoteMsg":
+            if msg_round%5 is 3:
+                log('Dropping vote message')
+                return
             for partition in partitions[msg_round-1]:
                 if sender_id[-1] in partition:
                     for ldr in nxt_rnd_leader:
