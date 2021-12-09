@@ -132,5 +132,3 @@ dmypy.json
 pseudocode/
 
 # our files
-*.ledger
-*.log
